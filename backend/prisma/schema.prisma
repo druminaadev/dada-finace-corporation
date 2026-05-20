@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Master Data ────────────────────────────────────────────────────────────
+
+model State {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cities    City[]
+
+  @@map("states")
+}
+
+model City {
+  id        String   @id @default(uuid())
+  name      String
+  stateId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  areas     Area[]
+
+  @@unique([name, stateId])
+  @@map("cities")
+}
+
+model Area {
+  id        String   @id @default(uuid())
+  name      String
+  cityId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([name, cityId])
+  @@map("areas")
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("branches")
+}
+
+model LoanType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("loan_types")
+}
+
+model Bank {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banks")
+}
+
+// ─── Users ──────────────────────────────────────────────────────────────────
+
+model User {
+  id               String        @id @default(uuid())
+  email            String        @unique
+  password         String
+  name             String
+  phone            String?
+  role             Role          @default(USER)
+  refreshToken     String?
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  createdCustomers Customer[]    @relation("CreatedBy")
+  approvedLoans    Loan[]        @relation("ApprovedBy")
+  createdLoans     Loan[]        @relation("CreatedBy")
+  loanDrafts       LoanDraft[]
+  statusHistory    LoanStatusHistory[]
+
+  @@map("users")
+}
+
+// ─── OTP Verification Logs ──────────────────────────────────────────────────
+
+model OtpLog {
+  id          String    @id @default(uuid())
+  aadhaar     String
+  phone       String
+  otp         String
+  verified    Boolean   @default(false)
+  attempts    Int       @default(0)
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("otp_logs")
+}
+
+// ─── Customers ──────────────────────────────────────────────────────────────
+
+model Customer {
+  id            String    @id @default(uuid())
+  appNo         String    @unique
+  name          String
+  fatherName    String?
+  motherName    String?
+  email         String?   @unique
+  phone         String    @unique
+  altPhone      String?
+  address       String?
+  occupation    String?
+  income        Float?
+  businessInfo  String?
+  aadhaar       String?   @unique
+  pan           String?   @unique
+  dob           DateTime?
+  age           Int?
+  gender        String?
+  maritalStatus String?
+  bloodGroup    String?
+  jobAddress    String?
+  photoPath     String?
+  // Bank details
+  bankAccountNo   String?
+  bankHolderName  String?
+  bankName        String?
+  bankBranch      String?
+  bankIfsc        String?
+  // Location
+  stateId       String?
+  cityId        String?
+  areaId        String?
+  branchId      String?
+  employeeId    String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String
+  creator       User      @relation("CreatedBy", fields: [createdBy], references: [id])
+  loans         Loan[]
+  nominees      Nominee[]
+  guarantors    Guarantor[]
+  loanDrafts    LoanDraft[]
+
+  @@map("customers")
+}
+
+// ─── Loan Draft (5-stage application in progress) ───────────────────────────
+
+model LoanDraft {
+  id           String          @id @default(uuid())
+  customerId   String?
+  createdBy    String
+  currentStage Int             @default(1)
+  status       LoanDraftStatus @default(DRAFT)
+  // Stage data stored as JSON blobs
+  stage1Data   Json?           // Aadhaar OTP result + auto-filled info
+  stage2Data   Json?           // Customer details + loan details
+  stage3Data   Json?           // Nominees + guarantors
+  stage4Data   Json?           // Document upload metadata
+  stage5Data   Json?           // Final confirmation data
+  // Completion flags
+  stage1Done   Boolean         @default(false)
+  stage2Done   Boolean         @default(false)
+  stage3Done   Boolean         @default(false)
+  stage4Done   Boolean         @default(false)
+  submittedAt  DateTime?
+  loanId       String?         @unique
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  creator      User            @relation(fields: [createdBy], references: [id])
+  customer     Customer?       @relation(fields: [customerId], references: [id])
+  loan         Loan?           @relation(fields: [loanId], references: [id])
+
+  @@map("loan_drafts")
+}
+
+// ─── Loans ──────────────────────────────────────────────────────────────────
+
+model Loan {
+  id              String        @id @default(uuid())
+  loanNo          String        @unique
+  customerId      String
+  loanCategory    LoanCategory  @default(PERSONAL)
+  amount          Float
+  interestRate    Float
+  interestType    InterestType  @default(FLAT)
+  tenure          Int
+  emiAmount       Float
+  totalAmount     Float
+  processingFee   Float         @default(0)
+  status          LoanStatus    @default(DRAFT)
+  purpose         String?
+  notes           String?
+  // Security deposit
+  securityType    String?
+  securityData    Json?
+  // Receiver
+  receiverMobile  String?
+  // Approval trail
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  disbursedAt     DateTime?
+  createdBy       String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  emiSchedules    EMISchedule[]
+  guarantors      Guarantor[]
+  nominees        Nominee[]
+  documents       Document[]
+  statusHistory   LoanStatusHistory[]
+  approver        User?         @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  creator         User          @relation("CreatedBy", fields: [createdBy], references: [id])
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  draft           LoanDraft?
+
+  @@map("loans")
+}
+
+// ─── Loan Status History (audit trail) ──────────────────────────────────────
+
+model LoanStatusHistory {
+  id        String     @id @default(uuid())
+  loanId    String
+  status    LoanStatus
+  note      String?
+  changedBy String
+  createdAt DateTime   @default(now())
+  loan      Loan       @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [changedBy], references: [id])
+
+  @@map("loan_status_history")
+}
+
+// ─── EMI Schedules ──────────────────────────────────────────────────────────
+
+model EMISchedule {
+  id          String       @id @default(uuid())
+  loanId      String
+  emiNumber   Int
+  dueDate     DateTime
+  amount      Float
+  principal   Float
+  interest    Float
+  status      EMIStatus    @default(PENDING)
+  paidDate    DateTime?
+  paidAmount  Float?
+  paymentMode PaymentMode?
+  lateFee     Float?       @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  loan        Loan         @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  smsReminder SmsReminder?
+
+  @@unique([loanId, emiNumber])
+  @@map("emi_schedules")
+}
+
+model SmsReminder {
+  id            String      @id @default(uuid())
+  emiId         String      @unique
+  phone         String
+  message       String
+  status        String      @default("PENDING")
+  sentAt        DateTime?
+  failureReason String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  emi           EMISchedule @relation(fields: [emiId], references: [id], onDelete: Cascade)
+
+  @@map("sms_reminders")
+}
+
+model Payment {
+  id            String      @id @default(uuid())
+  emiId         String
+  amount        Float
+  paymentMode   PaymentMode
+  transactionId String?
+  remarks       String?
+  paidAt        DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  emi           EMISchedule @relation(fields: [emiId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ─── Guarantors ─────────────────────────────────────────────────────────────
+
+model Guarantor {
+  id           String    @id @default(uuid())
+  loanId       String?
+  customerId   String?
+  slot         Int       @default(1)
+  name         String
+  phone        String
+  email        String?
+  address      String?
+  relationship String?
+  aadhaar      String?
+  pan          String?
+  occupation   String?
+  income       Float?
+  photoPath    String?
+  documentPath String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  loan         Loan?     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("guarantors")
+}
+
+// ─── Nominees ───────────────────────────────────────────────────────────────
+
+model Nominee {
+  id           String    @id @default(uuid())
+  loanId       String?
+  customerId   String?
+  slot         Int       @default(1)
+  name         String
+  phone        String?
+  relationship String?
+  address      String?
+  aadhaar      String?
+  occupation   String?
+  income       Float?
+  dob          DateTime?
+  photoPath    String?
+  documentPath String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  loan         Loan?     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("nominees")
+}
+
+// ─── Documents ──────────────────────────────────────────────────────────────
+
+model Document {
+  id           String       @id @default(uuid())
+  loanId       String?
+  entityType   String
+  entityId     String
+  documentType DocumentType
+  category     String?
+  fileName     String
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  uploadedAt   DateTime     @default(now())
+  loan         Loan?        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+  USER
+}
+
+enum LoanDraftStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum LoanStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  ACTIVE
+  CLOSED
+  DEFAULTED
+}
+
+enum LoanCategory {
+  GOLD
+  PERSONAL
+  VEHICLE
+}
+
+enum InterestType {
+  FLAT
+  REDUCING
+}
+
+enum EMIStatus {
+  PENDING
+  PAID
+  OVERDUE
+  PARTIAL
+}
+
+enum PaymentMode {
+  CASH
+  PAYTM
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+}
+
+enum DocumentType {
+  AADHAAR
+  PAN
+  PHOTO
+  INCOME_PROOF
+  ADDRESS_PROOF
+  BANK_STATEMENT
+  RC_BOOK
+  INSURANCE
+  VEHICLE_IMAGE
+  INVOICE
+  OTHER
+}

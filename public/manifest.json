@@ -1,0 +1,16 @@
+{
+  "name": "NEXZEN",
+  "short_name": "NEXZEN",
+  "description": "Loan Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#462C7D",
+  "icons": [
+    {
+      "src": "/nexzen-icon.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

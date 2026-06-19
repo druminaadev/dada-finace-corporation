@@ -1,0 +1,46 @@
+/* Enhanced Dark Mode Theme - Olive, Cream, Gold, Terracotta Palette */
+
+.dark {
+  --bg: #1B1816;
+  --surface: #262220;
+  --card: #262220;
+  --form-field: #262220;
+  --text-primary: #FAF6F0;
+  --text-secondary: #D9C5C1;
+  --border: rgba(177, 148, 112, 0.22);
+  --hover: #312C29;
+  --accent: #43766C;
+  --accent-hover: #5B9287;
+  --accent-light: #5B9287;
+  --accent-dark: #294A43;
+  --accent-pink: #B19470;
+}
+
+/* Dark mode input fields */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--form-field) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(67, 118, 108, 0.15) !important;
+}
+
+/* Dark mode labels */
+.dark label {
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode background gradient */
+.dark body {
+  background: #1B1816;
+  background-image: 
+    radial-gradient(circle at 18% 82%, rgba(67, 118, 108, 0.1) 0%, transparent 44%),
+    radial-gradient(circle at 86% 12%, rgba(177, 148, 112, 0.08) 0%, transparent 42%);
+}

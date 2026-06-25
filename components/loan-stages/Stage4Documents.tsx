@@ -1,10 +1,14 @@
 'use client'
 import { useState } from 'react'
 import { useLoanDraftStore, UploadedFile } from '@/store/loanDraftStore'
+import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Upload, FileText, Image, CheckCircle, X, File } from 'lucide-react'
+import { Upload, FileText, Image, CheckCircle, X, Trash2 } from 'lucide-react'
+
+const FRONTEND_ONLY = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 const DOCUMENT_CATEGORIES = {
   customer: [
@@ -12,12 +16,12 @@ const DOCUMENT_CATEGORIES = {
     { id: 'pan_card', label: 'PAN Card', required: true },
     { id: 'passport_photo', label: 'Passport Size Photo', required: true },
     { id: 'address_proof', label: 'Address Proof', required: true },
-    { id: 'bank_statement', label: 'Bank Statement (Last 6 months)', required: false },
-    { id: 'income_proof', label: 'Income Proof (Salary Slip/ITR)', required: false },
+    { id: 'bank_statement', label: 'Bank Statement (Last 6 months)', required: true },
+    { id: 'income_proof', label: 'Income Proof (Salary Slip/ITR)', required: true },
   ],
   nominee: [
-    { id: 'nominee_identity', label: 'Nominee Identity Proof', required: false },
-    { id: 'nominee_address', label: 'Nominee Address Proof', required: false },
+    { id: 'nominee_identity', label: 'Nominee Identity Proof', required: true },
+    { id: 'nominee_address', label: 'Nominee Address Proof', required: true },
   ],
   guarantor: [
     { id: 'guarantor_identity', label: 'Guarantor Identity Proof', required: true },
@@ -25,10 +29,10 @@ const DOCUMENT_CATEGORIES = {
     { id: 'guarantor_address', label: 'Guarantor Address Proof', required: true },
   ],
   vehicle: [
-    { id: 'rc_book', label: 'RC Book', required: false },
-    { id: 'insurance', label: 'Insurance Copy', required: false },
-    { id: 'vehicle_images', label: 'Vehicle Images (Front/Back/Sides)', required: false },
-    { id: 'invoice', label: 'Purchase Invoice', required: false },
+    { id: 'rc_book', label: 'RC Book', required: true },
+    { id: 'insurance', label: 'Insurance Copy', required: true },
+    { id: 'vehicle_images', label: 'Vehicle Images (Front/Back/Sides)', required: true },
+    { id: 'invoice', label: 'Purchase Invoice', required: true },
   ],
 }
 
@@ -43,6 +47,7 @@ interface DocumentUploadProps {
 
 function DocumentUpload({ category, label, required, files, onUpload, onRemove }: DocumentUploadProps) {
   const [dragActive, setDragActive] = useState(false)
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({})
   const { showToast } = useUIStore()
 
   const handleFile = (file: File) => {
@@ -97,7 +102,7 @@ function DocumentUpload({ category, label, required, files, onUpload, onRemove }
               style={{ background: 'var(--accent-tint)', borderColor: 'var(--border)' }}
             >
               <div className="flex items-center gap-3">
-                <CheckCircle size={20} style={{ color: 'var(--success)' }} />
+                <CheckCircle size={20} style={{ color: confirmed[file.fileName] ? 'var(--success)' : 'var(--text-secondary)' }} />
                 <div>
                   <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {file.fileName}
@@ -107,30 +112,38 @@ function DocumentUpload({ category, label, required, files, onUpload, onRemove }
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => onRemove(file.fileName)}
-                className="p-2 rounded-lg hover:bg-red-100 text-red-500 transition-colors"
-                title="Remove file"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                {!confirmed[file.fileName] && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmed(prev => ({ ...prev, [file.fileName]: true }))
+                      showToast(`${file.fileName} confirmed`, 'success')
+                    }}
+                    className="text-xs px-3 py-1 rounded-full font-semibold"
+                    style={{ background: 'var(--primary)', color: '#fff' }}
+                  >
+                    Confirm
+                  </button>
+                )}
+                {confirmed[file.fileName] && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--success)', color: '#fff' }}>Confirmed</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRemove(file.fileName)
+                    setConfirmed(prev => { const c = { ...prev }; delete c[file.fileName]; return c })
+                  }}
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: '#ef4444' }}
+                  title="Remove"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           ))}
-          {/* Add another file button */}
-          <label className="block">
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={handleChange}
-              className="hidden"
-            />
-            <div className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed cursor-pointer hover:bg-[var(--hover)] transition-colors"
-              style={{ borderColor: 'var(--border)' }}
-            >
-              <Upload size={16} style={{ color: 'var(--accent)' }} />
-              <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>Add Another File</span>
-            </div>
-          </label>
         </div>
       ) : (
         <label className="block cursor-pointer">
@@ -165,8 +178,10 @@ function DocumentUpload({ category, label, required, files, onUpload, onRemove }
 }
 
 export default function Stage4Documents() {
-  const { stage4, setStage4, completeStage, setCurrentStage, stage2 } = useLoanDraftStore()
+  const { token } = useAuthStore()
+  const { stage4, setStage4, completeStage, setCurrentStage, stage2, draftId } = useLoanDraftStore()
   const { showToast } = useUIStore()
+  const [saving, setSaving] = useState(false)
 
   const handleUpload = (category: 'customerDocs' | 'nomineeDocs' | 'guarantorDocs' | 'vehicleDocs', file: UploadedFile) => {
     setStage4({
@@ -180,39 +195,76 @@ export default function Stage4Documents() {
     })
   }
 
-  const handleNext = () => {
-    // Check required documents
+  const saveStage4 = async () => {
+    if (!FRONTEND_ONLY) {
+      const res = await fetch(`${API_BASE}/loan-application/drafts/${draftId}/stage/4`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          customerDocs: stage4.customerDocs,
+          nomineeDocs: stage4.nomineeDocs,
+          guarantorDocs: stage4.guarantorDocs,
+          vehicleDocs: stage4.vehicleDocs,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed to save Stage 4 details')
+    }
+  }
+
+  const handleNext = async () => {
+    // Check required documents for Customer
     const requiredCustomerDocs = DOCUMENT_CATEGORIES.customer.filter((d) => d.required)
     const uploadedCustomerCategories = new Set(stage4.customerDocs.map((d) => d.category))
-    
     const missingDocs = requiredCustomerDocs.filter((d) => !uploadedCustomerCategories.has(d.id))
-    
     if (missingDocs.length > 0) {
-      showToast(`Please upload: ${missingDocs.map((d) => d.label).join(', ')}`, 'error')
+      showToast(`Please upload customer documents: ${missingDocs.map((d) => d.label).join(', ')}`, 'error')
       return
     }
 
+    // Check required documents for Nominee
+    const requiredNomineeDocs = DOCUMENT_CATEGORIES.nominee.filter((d) => d.required)
+    const uploadedNomineeCategories = new Set(stage4.nomineeDocs.map((d) => d.category))
+    const missingNomineeDocs = requiredNomineeDocs.filter((d) => !uploadedNomineeCategories.has(d.id))
+    if (missingNomineeDocs.length > 0) {
+      showToast(`Please upload nominee documents: ${missingNomineeDocs.map((d) => d.label).join(', ')}`, 'error')
+      return
+    }
+
+    // Check required documents for Guarantor
     const requiredGuarantorDocs = DOCUMENT_CATEGORIES.guarantor.filter((d) => d.required)
     const uploadedGuarantorCategories = new Set(stage4.guarantorDocs.map((d) => d.category))
-    
     const missingGuarantorDocs = requiredGuarantorDocs.filter((d) => !uploadedGuarantorCategories.has(d.id))
-    
     if (missingGuarantorDocs.length > 0) {
       showToast(`Please upload guarantor documents: ${missingGuarantorDocs.map((d) => d.label).join(', ')}`, 'error')
       return
     }
 
-    completeStage(4)
-    setCurrentStage(5)
-    showToast('Documents uploaded successfully!', 'success')
-  }
-
-  const handleSkip = () => {
-    if (stage4.customerDocs.length === 0 && stage4.guarantorDocs.length === 0) {
-      showToast('Skipping document upload. You can upload documents later.', 'info')
+    // Check required documents for Vehicle (if applicable)
+    if (isVehicleLoan) {
+      const requiredVehicleDocs = DOCUMENT_CATEGORIES.vehicle.filter((d) => d.required)
+      const uploadedVehicleCategories = new Set(stage4.vehicleDocs.map((d) => d.category))
+      const missingVehicleDocs = requiredVehicleDocs.filter((d) => !uploadedVehicleCategories.has(d.id))
+      if (missingVehicleDocs.length > 0) {
+        showToast(`Please upload vehicle documents: ${missingVehicleDocs.map((d) => d.label).join(', ')}`, 'error')
+        return
+      }
     }
-    completeStage(4)
-    setCurrentStage(5)
+
+    setSaving(true)
+    try {
+      await saveStage4()
+      completeStage(4)
+      setCurrentStage(5)
+      showToast('Documents uploaded successfully!', 'success')
+    } catch (err: any) {
+      showToast(err.message || 'Failed to save Stage 4 details', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const isVehicleLoan = stage2.loanDetails.loanCategory === 'VEHICLE'
@@ -237,7 +289,7 @@ export default function Stage4Documents() {
       </Card>
 
       {/* Nominee Documents */}
-      <Card title="Nominee Documents (Optional)" icon={<FileText size={18} />}>
+      <Card title="Nominee Documents" icon={<FileText size={18} />}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {DOCUMENT_CATEGORIES.nominee.map((doc) => (
             <DocumentUpload
@@ -291,17 +343,12 @@ export default function Stage4Documents() {
 
       {/* Navigation */}
       <div className="flex justify-between items-center gap-3">
-        <Button onClick={() => setCurrentStage(3)} variant="outline">
+        <Button onClick={() => setCurrentStage(3)} variant="outline" disabled={saving}>
           Previous
         </Button>
-        <div className="flex gap-3">
-          <Button onClick={handleSkip} variant="outline">
-            Skip for Now
-          </Button>
-          <Button onClick={handleNext}>
-            Next: Review & Submit
-          </Button>
-        </div>
+        <Button onClick={handleNext} loading={saving} disabled={saving}>
+          Next: Review & Submit
+        </Button>
       </div>
 
       {/* Upload Summary */}

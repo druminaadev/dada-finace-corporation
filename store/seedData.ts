@@ -40,11 +40,11 @@ export const SEED_LOAN_TYPES = [
 ]
 
 export const SEED_EMPLOYEES = [
-  { id: 1, name: 'Jhanvi Patel', code: 'EMP001', branchId: 1, contact: '9876543210', role: 'Loan Officer', email: 'jhanvi@nexzen.com' },
-  { id: 2, name: 'Ravi Sharma', code: 'EMP002', branchId: 1, contact: '9876543211', role: 'Senior Officer', email: 'ravi@nexzen.com' },
-  { id: 3, name: 'Priya Mehta', code: 'EMP003', branchId: 2, contact: '9876543212', role: 'Loan Officer', email: 'priya@nexzen.com' },
-  { id: 4, name: 'Amit Kumar', code: 'EMP004', branchId: 3, contact: '9876543213', role: 'Branch Manager', email: 'amit@nexzen.com' },
-  { id: 5, name: 'Sunita Verma', code: 'EMP005', branchId: 2, contact: '9876543214', role: 'Loan Officer', email: 'sunita@nexzen.com' },
+  { id: 1, name: 'Jhanvi Patel', code: 'EMP001', branchId: 1, contact: '9876543210', role: 'Loan Officer', email: 'jhanvi@nexzen.com', photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150' },
+  { id: 2, name: 'Ravi Sharma', code: 'EMP002', branchId: 1, contact: '9876543211', role: 'Senior Officer', email: 'ravi@nexzen.com', photoUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150' },
+  { id: 3, name: 'Priya Mehta', code: 'EMP003', branchId: 2, contact: '9876543212', role: 'Loan Officer', email: 'priya@nexzen.com', photoUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150' },
+  { id: 4, name: 'Amit Kumar', code: 'EMP004', branchId: 3, contact: '9876543213', role: 'Branch Manager', email: 'amit@nexzen.com', photoUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150' },
+  { id: 5, name: 'Sunita Verma', code: 'EMP005', branchId: 2, contact: '9876543214', role: 'Loan Officer', email: 'sunita@nexzen.com', photoUrl: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150' },
 ]
 
 export const SEED_CUSTOMERS = [
@@ -54,7 +54,7 @@ export const SEED_CUSTOMERS = [
     occupation: 'Businessman', regDate: '2025-01-10', mobile: '9876501001', altMobile: '9876501002',
     email: 'ramesh.patel@email.com', aadhar: '123456789012', pan: 'ABCDE1234F',
     jobAddress: '45 Market Road, Ahmedabad', stateId: 1, cityId: 1, areaId: 1, branchId: 1, employeeId: 1,
-    photoUrl: '', bank: { accountNo: '10234567890', holderName: 'Ramesh Patel', bankName: 'SBI', bankBranch: 'Navrangpura', ifsc: 'SBIN0001234', documentUrl: '' },
+    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', bank: { accountNo: '10234567890', holderName: 'Ramesh Patel', bankName: 'SBI', bankBranch: 'Navrangpura', ifsc: 'SBIN0001234', documentUrl: '' },
     nominee: { identityProof: 'Aadhar Card', identityNo: '234567890123', name: 'Sunita Patel', relation: 'Spouse', dob: '1988-03-20', age: 36, mobile: '9876501003', address: '45 Market Road, Ahmedabad', photoUrl: '', accountNo: '20234567890', holderName: 'Sunita Patel', bankName: 'HDFC Bank', bankBranch: 'Navrangpura', ifsc: 'HDFC0001234', documentUrl: '' },
     guarantor1: { slot: 1, identityProof: 'Aadhar Card', identityNo: '345678901234', name: 'Mahesh Patel', relation: 'Brother', dob: '1982-09-10', age: 42, mobile: '9876501004', address: '12 Gandhi Nagar, Ahmedabad', photoUrl: '', accountNo: '30234567890', holderName: 'Mahesh Patel', bankName: 'ICICI Bank', bankBranch: 'Satellite', ifsc: 'ICIC0001234', documentUrl: '' },
     guarantor2: null,
@@ -65,7 +65,7 @@ export const SEED_CUSTOMERS = [
     occupation: 'Teacher', regDate: '2025-01-15', mobile: '9876502001', altMobile: '',
     email: 'priya.shah@email.com', aadhar: '234567890123', pan: 'BCDEF2345G',
     jobAddress: 'City School, Surat', stateId: 1, cityId: 2, areaId: 4, branchId: 2, employeeId: 3,
-    photoUrl: '', bank: { accountNo: '10345678901', holderName: 'Priya Shah', bankName: 'HDFC Bank', bankBranch: 'Adajan', ifsc: 'HDFC0002345', documentUrl: '' },
+    photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', bank: { accountNo: '10345678901', holderName: 'Priya Shah', bankName: 'HDFC Bank', bankBranch: 'Adajan', ifsc: 'HDFC0002345', documentUrl: '' },
     nominee: null, guarantor1: null, guarantor2: null,
   },
   {
@@ -74,7 +74,7 @@ export const SEED_CUSTOMERS = [
     occupation: 'Farmer', regDate: '2025-02-01', mobile: '9876503001', altMobile: '9876503002',
     email: '', aadhar: '345678901234', pan: 'CDEFG3456H',
     jobAddress: 'Village Kadi, Mehsana', stateId: 1, cityId: 3, areaId: 3, branchId: 1, employeeId: 2,
-    photoUrl: '', bank: { accountNo: '10456789012', holderName: 'Vijay Kumar', bankName: 'Bank of Baroda', bankBranch: 'Vadodara', ifsc: 'BARB0001234', documentUrl: '' },
+    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', bank: { accountNo: '10456789012', holderName: 'Vijay Kumar', bankName: 'Bank of Baroda', bankBranch: 'Vadodara', ifsc: 'BARB0001234', documentUrl: '' },
     nominee: null, guarantor1: null, guarantor2: null,
   },
   {
@@ -83,7 +83,7 @@ export const SEED_CUSTOMERS = [
     occupation: 'Software Engineer', regDate: '2025-02-10', mobile: '9876504001', altMobile: '',
     email: 'anita.desai@email.com', aadhar: '456789012345', pan: 'DEFGH4567I',
     jobAddress: 'Tech Park, Mumbai', stateId: 2, cityId: 4, areaId: 6, branchId: 3, employeeId: 4,
-    photoUrl: '', bank: { accountNo: '10567890123', holderName: 'Anita Desai', bankName: 'Axis Bank', bankBranch: 'Andheri', ifsc: 'UTIB0001234', documentUrl: '' },
+    photoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150', bank: { accountNo: '10567890123', holderName: 'Anita Desai', bankName: 'Axis Bank', bankBranch: 'Andheri', ifsc: 'UTIB0001234', documentUrl: '' },
     nominee: null, guarantor1: null, guarantor2: null,
   },
   {
@@ -92,7 +92,7 @@ export const SEED_CUSTOMERS = [
     occupation: 'Shop Owner', regDate: '2025-03-05', mobile: '9876505001', altMobile: '9876505002',
     email: 'suresh.joshi@email.com', aadhar: '567890123456', pan: 'EFGHI5678J',
     jobAddress: 'Main Bazaar, Jaipur', stateId: 3, cityId: 6, areaId: 2, branchId: 4, employeeId: 2,
-    photoUrl: '', bank: { accountNo: '10678901234', holderName: 'Suresh Joshi', bankName: 'PNB', bankBranch: 'MI Road', ifsc: 'PUNB0001234', documentUrl: '' },
+    photoUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150', bank: { accountNo: '10678901234', holderName: 'Suresh Joshi', bankName: 'PNB', bankBranch: 'MI Road', ifsc: 'PUNB0001234', documentUrl: '' },
     nominee: null, guarantor1: null, guarantor2: null,
   },
 ]

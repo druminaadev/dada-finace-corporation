@@ -6,7 +6,7 @@ interface ModalProps {
   open: boolean; onClose: () => void; title: string
   children: React.ReactNode; size?: 'sm' | 'md' | 'lg'
 }
-const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }
+const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-3xl' }
 
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
   useEffect(() => {
@@ -24,7 +24,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
           <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
           <button onClick={onClose} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-pointer"><X size={18} /></button>
         </div>
-        <div className="overflow-y-auto overflow-x-visible p-6" style={{ overflowY: 'auto' }}>{children}</div>
+        <div className="overflow-y-auto p-6" style={{ overflowY: 'auto', overflowX: 'visible' }}>{children}</div>
       </div>
     </div>
   )

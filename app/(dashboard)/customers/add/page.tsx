@@ -13,10 +13,8 @@ import {
   Save, X, Send, Camera, RotateCcw,
   ChevronRight, ChevronLeft, User, Phone, CreditCard,
   MapPin, Mail, Briefcase, Building2, Eye, CheckCircle,
-  Upload, FileText
+  Upload
 } from 'lucide-react'
-
-const FRONTEND_ONLY = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
 
 const STEPS = ['Verify Aadhaar', 'Personal Info', 'Bank Details', 'Nominee & Guarantors', 'Upload Documents', 'Preview & Save']
 
@@ -25,11 +23,11 @@ const DOC_LIST = [
   { id: 'pan_card', label: 'PAN Card', required: true },
   { id: 'passport_photo', label: 'Passport Size Photo', required: true },
   { id: 'address_proof', label: 'Address Proof', required: true },
-  { id: 'bank_statement', label: 'Bank Statement (Last 6 months)', required: false },
-  { id: 'income_proof', label: 'Income Proof (Salary Slip/ITR)', required: false },
-  { id: 'guarantor_identity', label: 'Guarantor Identity Proof', required: false },
-  { id: 'guarantor_pan', label: 'Guarantor PAN Card', required: false },
-  { id: 'guarantor_address', label: 'Guarantor Address Proof', required: false },
+  { id: 'bank_statement', label: 'Bank Statement (Last 6 months)', required: true },
+  { id: 'income_proof', label: 'Income Proof (Salary Slip/ITR)', required: true },
+  { id: 'guarantor_identity', label: 'Guarantor Identity Proof', required: true },
+  { id: 'guarantor_pan', label: 'Guarantor PAN Card', required: true },
+  { id: 'guarantor_address', label: 'Guarantor Address Proof', required: true },
 ]
 
 export default function AddCustomerPage() {
@@ -39,6 +37,7 @@ export default function AddCustomerPage() {
 
   const [step, setStep] = useState(0) // 0=aadhaar, 1=personal, 2=bank, 3=nominee/guarantors, 4=documents, 5=preview
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, { name: string; size: number } | null>>({})
+  const [confirmedDocs, setConfirmedDocs] = useState<Record<string, boolean>>({})
   const [aadhaar, setAadhaar] = useState('')
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
@@ -74,7 +73,7 @@ export default function AddCustomerPage() {
   useEffect(() => {
     if (formData.dob) {
       const age = Math.floor((Date.now() - new Date(formData.dob).getTime()) / (365.25 * 24 * 3600 * 1000))
-      if (age > 0) set('age', String(age))
+      if (age > 0) setTimeout(() => set('age', String(age)), 0)
     }
   }, [formData.dob])
 
@@ -84,8 +83,9 @@ export default function AddCustomerPage() {
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
       const ms = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
       streamRef.current = ms; setStream(ms); setShowCamera(true)
-    } catch (err: any) {
-      showToast(err.name === 'NotAllowedError' ? 'Camera permission denied' : 'Camera not available', 'error')
+    } catch (err: unknown) {
+      const errName = err instanceof Error ? (err as Error & { name: string }).name : ''
+      showToast(errName === 'NotAllowedError' ? 'Camera permission denied' : 'Camera not available', 'error')
     }
   }
   const stopCamera = () => {
@@ -133,8 +133,80 @@ export default function AddCustomerPage() {
   // Validation per step
   const validateStep = (s: number) => {
     if (s === 1) {
-      if (!formData.name) { showToast('Customer name is required', 'error'); return false }
-      if (!formData.mobile || !/^[6-9]\d{9}$/.test(formData.mobile)) { showToast('Valid mobile number is required', 'error'); return false }
+      if (!photoDataUrl) { showToast('Customer photo is required', 'error'); return false }
+      if (!formData.name?.trim()) { showToast('Customer name is required', 'error'); return false }
+      if (!formData.fatherName?.trim()) { showToast("Father's Name is required", 'error'); return false }
+      if (!formData.motherName?.trim()) { showToast("Mother's Name is required", 'error'); return false }
+      if (!formData.dob?.trim()) { showToast('Date of Birth is required', 'error'); return false }
+      if (!formData.gender?.trim()) { showToast('Gender is required', 'error'); return false }
+      if (!formData.maritalStatus?.trim()) { showToast('Marital Status is required', 'error'); return false }
+      if (!formData.bloodGroup?.trim()) { showToast('Blood Group is required', 'error'); return false }
+      if (!formData.occupation?.trim()) { showToast('Occupation is required', 'error'); return false }
+      if (!formData.mobile || !/^[6-9]\d{9}$/.test(formData.mobile)) { showToast('Valid 10-digit mobile number is required', 'error'); return false }
+      if (!formData.altMobile || !/^[6-9]\d{9}$/.test(formData.altMobile)) { showToast('Valid 10-digit alternative mobile number is required', 'error'); return false }
+      if (!formData.email?.trim() || !/\S+@\S+\.\S+/.test(formData.email)) { showToast('Valid email is required', 'error'); return false }
+      if (!formData.pan?.trim() || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan.trim().toUpperCase())) { showToast('Valid PAN number format is required (e.g. ABCDE1234F)', 'error'); return false }
+      if (!formData.jobAddress?.trim()) { showToast('Job Address is required', 'error'); return false }
+      if (!formData.branchId?.trim()) { showToast('Branch is required', 'error'); return false }
+      if (!formData.employeeId?.trim()) { showToast('Assigned Employee is required', 'error'); return false }
+      if (!formData.address?.trim()) { showToast('Residential Address is required', 'error'); return false }
+    }
+    if (s === 2) {
+      if (!formData.bankAccountNo?.trim()) { showToast('Account Number is required', 'error'); return false }
+      if (!formData.bankHolderName?.trim()) { showToast('Account Holder Name is required', 'error'); return false }
+      if (!formData.bankName?.trim()) { showToast('Bank Name is required', 'error'); return false }
+      if (!formData.bankBranch?.trim()) { showToast('Bank Branch is required', 'error'); return false }
+      if (!formData.bankIfsc?.trim() || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.bankIfsc.toUpperCase())) { showToast('Valid IFSC code is required', 'error'); return false }
+    }
+    if (s === 3) {
+      // Nominee details
+      if (!nomineeData.name?.trim()) { showToast('Nominee Full Name is required', 'error'); return false }
+      if (!nomineeData.mobile || !/^[6-9]\d{9}$/.test(nomineeData.mobile)) { showToast('Valid 10-digit nominee mobile is required', 'error'); return false }
+      if (!nomineeData.relationship?.trim()) { showToast('Nominee Relationship is required', 'error'); return false }
+      if (!nomineeData.dob?.trim()) { showToast('Nominee Date of Birth is required', 'error'); return false }
+      if (!nomineeData.address?.trim()) { showToast('Nominee Address is required', 'error'); return false }
+
+      // Guarantor 1 details
+      if (!guarantor1Data.name?.trim()) { showToast('Guarantor 1 Full Name is required', 'error'); return false }
+      if (!guarantor1Data.mobile || !/^[6-9]\d{9}$/.test(guarantor1Data.mobile)) { showToast('Valid 10-digit guarantor 1 mobile is required', 'error'); return false }
+      if (!guarantor1Data.email || !/\S+@\S+\.\S+/.test(guarantor1Data.email)) { showToast('Valid guarantor 1 email is required', 'error'); return false }
+      if (!guarantor1Data.aadhar || !/^\d{12}$/.test(guarantor1Data.aadhar)) { showToast('Valid 12-digit guarantor 1 Aadhaar is required', 'error'); return false }
+      if (!guarantor1Data.pan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(guarantor1Data.pan.toUpperCase())) { showToast('Valid guarantor 1 PAN is required', 'error'); return false }
+      if (!guarantor1Data.relationship?.trim()) { showToast('Guarantor 1 Relationship is required', 'error'); return false }
+      if (!guarantor1Data.occupation?.trim()) { showToast('Guarantor 1 Occupation is required', 'error'); return false }
+      if (!guarantor1Data.income || parseFloat(String(guarantor1Data.income)) <= 0) { showToast('Guarantor 1 Monthly Income is required', 'error'); return false }
+      if (!guarantor1Data.address?.trim()) { showToast('Guarantor 1 Address is required', 'error'); return false }
+
+      // Guarantor 2 (optional, but if filled, all fields are required)
+      const hasGuarantor2Info = !!(
+        guarantor2Data.name?.trim() ||
+        guarantor2Data.mobile?.trim() ||
+        guarantor2Data.email?.trim() ||
+        guarantor2Data.aadhar?.trim() ||
+        guarantor2Data.pan?.trim() ||
+        guarantor2Data.relationship?.trim() ||
+        guarantor2Data.occupation?.trim() ||
+        guarantor2Data.income ||
+        guarantor2Data.address?.trim()
+      )
+      if (hasGuarantor2Info) {
+        if (!guarantor2Data.name?.trim()) { showToast('Guarantor 2 Full Name is required', 'error'); return false }
+        if (!guarantor2Data.mobile || !/^[6-9]\d{9}$/.test(guarantor2Data.mobile)) { showToast('Valid 10-digit guarantor 2 mobile is required', 'error'); return false }
+        if (!guarantor2Data.email || !/\S+@\S+\.\S+/.test(guarantor2Data.email)) { showToast('Valid guarantor 2 email is required', 'error'); return false }
+        if (!guarantor2Data.aadhar || !/^\d{12}$/.test(guarantor2Data.aadhar)) { showToast('Valid 12-digit guarantor 2 Aadhaar is required', 'error'); return false }
+        if (!guarantor2Data.pan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(guarantor2Data.pan.toUpperCase())) { showToast('Valid guarantor 2 PAN is required', 'error'); return false }
+        if (!guarantor2Data.relationship?.trim()) { showToast('Guarantor 2 Relationship is required', 'error'); return false }
+        if (!guarantor2Data.occupation?.trim()) { showToast('Guarantor 2 Occupation is required', 'error'); return false }
+        if (!guarantor2Data.income || parseFloat(String(guarantor2Data.income)) <= 0) { showToast('Guarantor 2 Monthly Income is required', 'error'); return false }
+        if (!guarantor2Data.address?.trim()) { showToast('Guarantor 2 Address is required', 'error'); return false }
+      }
+    }
+    if (s === 4) {
+      const missing = DOC_LIST.filter(doc => doc.required && !uploadedDocs[doc.id])
+      if (missing.length > 0) {
+        showToast(`Please upload: ${missing.map(m => m.label).join(', ')}`, 'error')
+        return false
+      }
     }
     return true
   }
@@ -197,12 +269,9 @@ export default function AddCustomerPage() {
           <div className="flex gap-3">
             <Input label="Aadhaar Number" required placeholder="Enter 12-digit Aadhaar" maxLength={12}
               value={aadhaar} onChange={e => setAadhaar(e.target.value.replace(/\D/g, ''))} disabled={otpSent} />
-            <div className="flex items-end gap-2">
+            <div className="flex items-end">
               <Button onClick={handleSendOtp} disabled={sending || otpSent} loading={sending}>
                 <Send size={15} /> {otpSent ? 'Sent ✓' : 'Send OTP'}
-              </Button>
-              <Button variant="outline" onClick={() => { showToast('Aadhaar verification skipped', 'info'); setStep(1) }}>
-                Skip
               </Button>
             </div>
           </div>
@@ -234,13 +303,13 @@ export default function AddCustomerPage() {
       <PageHeader title="Add Customer" subtitle="Step 2 of 6 — Personal Information" steps={STEPS} currentStep={step} />
       <div className="flex flex-col gap-4">
         {/* Photo */}
-        <Card title="Customer Photo (Optional)">
+        <Card title="Customer Photo">
           {!showCamera && !photoTaken && (
             <div className="flex flex-col items-center gap-3 py-8 rounded-xl cursor-pointer"
               style={{ border: '2px dashed var(--border)', background: 'var(--hover)' }}
               onClick={startCamera}>
               <Camera size={32} style={{ color: 'var(--accent)' }} />
-              <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>Click to start camera</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>Click to start camera (Required)</span>
             </div>
           )}
           {showCamera && stream && (
@@ -277,29 +346,29 @@ export default function AddCustomerPage() {
         <Card title="Personal Information">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Input label="Customer Name" required value={formData.name} onChange={e => set('name', e.target.value)} />
-            <Input label="Father's Name" value={formData.fatherName} onChange={e => set('fatherName', e.target.value)} />
-            <Input label="Mother's Name" value={formData.motherName} onChange={e => set('motherName', e.target.value)} />
-            <Input label="Date of Birth" type="date" value={formData.dob} onChange={e => set('dob', e.target.value)} />
-            <Input label="Age" value={formData.age} readOnly />
-            <Select label="Gender" value={formData.gender} onChange={e => set('gender', e.target.value)}
+            <Input label="Father's Name" required value={formData.fatherName} onChange={e => set('fatherName', e.target.value)} />
+            <Input label="Mother's Name" required value={formData.motherName} onChange={e => set('motherName', e.target.value)} />
+            <Input label="Date of Birth" required type="date" value={formData.dob} onChange={e => set('dob', e.target.value)} />
+            <Input label="Age" required value={formData.age} readOnly />
+            <Select label="Gender" required value={formData.gender} onChange={e => set('gender', e.target.value)}
               options={['Male', 'Female', 'Other'].map(v => ({ value: v, label: v }))} placeholder="Select Gender" />
-            <Select label="Marital Status" value={formData.maritalStatus} onChange={e => set('maritalStatus', e.target.value)}
+            <Select label="Marital Status" required value={formData.maritalStatus} onChange={e => set('maritalStatus', e.target.value)}
               options={['Single', 'Married', 'Divorced', 'Widowed'].map(v => ({ value: v, label: v }))} placeholder="Select Status" />
-            <Input label="Blood Group" value={formData.bloodGroup} onChange={e => set('bloodGroup', e.target.value)} placeholder="e.g. B+" />
-            <Input label="Occupation" value={formData.occupation} onChange={e => set('occupation', e.target.value)} />
+            <Input label="Blood Group" required value={formData.bloodGroup} onChange={e => set('bloodGroup', e.target.value)} placeholder="e.g. B+" />
+            <Input label="Occupation" required value={formData.occupation} onChange={e => set('occupation', e.target.value)} />
             <Input label="Mobile Number" required value={formData.mobile} onChange={e => set('mobile', e.target.value)} />
-            <Input label="Alt Mobile" value={formData.altMobile} onChange={e => set('altMobile', e.target.value)} />
-            <Input label="Email" type="email" value={formData.email} onChange={e => set('email', e.target.value)} />
-            <Input label="Aadhaar" value={formData.aadhar} readOnly />
-            <Input label="PAN" value={formData.pan} onChange={e => set('pan', e.target.value.toUpperCase())} maxLength={10} />
-            <Input label="Job Address" value={formData.jobAddress} onChange={e => set('jobAddress', e.target.value)} />
-            <Select label="Branch" value={formData.branchId} onChange={e => set('branchId', e.target.value)}
+            <Input label="Alt Mobile" required value={formData.altMobile} onChange={e => set('altMobile', e.target.value)} />
+            <Input label="Email" required type="email" value={formData.email} onChange={e => set('email', e.target.value)} />
+            <Input label="Aadhaar" required value={formData.aadhar} readOnly />
+            <Input label="PAN" required value={formData.pan} onChange={e => set('pan', e.target.value.toUpperCase())} maxLength={10} />
+            <Input label="Job Address" required value={formData.jobAddress} onChange={e => set('jobAddress', e.target.value)} />
+            <Select label="Branch" required value={formData.branchId} onChange={e => set('branchId', e.target.value)}
               options={branches.map(b => ({ value: b.id, label: b.name }))} placeholder="Select Branch" />
-            <Select label="Assigned Employee" value={formData.employeeId} onChange={e => set('employeeId', e.target.value)}
+            <Select label="Assigned Employee" required value={formData.employeeId} onChange={e => set('employeeId', e.target.value)}
               options={employees.map(emp => ({ value: emp.id, label: emp.name }))} placeholder="Select Employee" />
           </div>
           <div className="mt-4">
-            <Textarea label="Residential Address" rows={2} value={formData.address} onChange={e => set('address', e.target.value)} />
+            <Textarea label="Residential Address" required rows={2} value={formData.address} onChange={e => set('address', e.target.value)} />
           </div>
         </Card>
 
@@ -317,11 +386,11 @@ export default function AddCustomerPage() {
       <PageHeader title="Add Customer" subtitle="Step 3 of 6 — Bank Details" steps={STEPS} currentStep={step} />
       <Card title="Bank Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Input label="Account Number" value={formData.bankAccountNo} onChange={e => set('bankAccountNo', e.target.value)} />
-          <Input label="Account Holder Name" value={formData.bankHolderName} onChange={e => set('bankHolderName', e.target.value)} />
-          <Input label="Bank Name" value={formData.bankName} onChange={e => set('bankName', e.target.value)} />
-          <Input label="Branch" value={formData.bankBranch} onChange={e => set('bankBranch', e.target.value)} />
-          <Input label="IFSC Code" value={formData.bankIfsc} onChange={e => set('bankIfsc', e.target.value.toUpperCase())} maxLength={11} />
+          <Input label="Account Number" required value={formData.bankAccountNo} onChange={e => set('bankAccountNo', e.target.value)} />
+          <Input label="Account Holder Name" required value={formData.bankHolderName} onChange={e => set('bankHolderName', e.target.value)} />
+          <Input label="Bank Name" required value={formData.bankName} onChange={e => set('bankName', e.target.value)} />
+          <Input label="Branch" required value={formData.bankBranch} onChange={e => set('bankBranch', e.target.value)} />
+          <Input label="IFSC Code" required value={formData.bankIfsc} onChange={e => set('bankIfsc', e.target.value.toUpperCase())} maxLength={11} />
         </div>
       </Card>
       <div className="flex justify-between mt-4">
@@ -347,25 +416,25 @@ export default function AddCustomerPage() {
         <Card title="Nominee Information">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Input label="Full Name" required placeholder="Nominee name" value={nomineeData.name} onChange={e => setNomineeData(p => ({ ...p, name: e.target.value }))} />
-            <Input label="Mobile Number" placeholder="10-digit mobile" maxLength={10} value={nomineeData.mobile} onChange={e => setNomineeData(p => ({ ...p, mobile: e.target.value.replace(/\D/g, '') }))} />
+            <Input label="Mobile Number" required placeholder="10-digit mobile" maxLength={10} value={nomineeData.mobile} onChange={e => setNomineeData(p => ({ ...p, mobile: e.target.value.replace(/\D/g, '') }))} />
             <Select label="Relationship" required options={relOptions} placeholder="Select" value={nomineeData.relationship} onChange={e => setNomineeData(p => ({ ...p, relationship: e.target.value }))} />
-            <Input label="Date of Birth" type="date" value={nomineeData.dob} onChange={e => setNomineeData(p => ({ ...p, dob: e.target.value }))} />
+            <Input label="Date of Birth" required type="date" value={nomineeData.dob} onChange={e => setNomineeData(p => ({ ...p, dob: e.target.value }))} />
           </div>
-          <div className="mt-4"><Textarea label="Address" rows={2} value={nomineeData.address} onChange={e => setNomineeData(p => ({ ...p, address: e.target.value }))} /></div>
+          <div className="mt-4"><Textarea label="Address" required rows={2} value={nomineeData.address} onChange={e => setNomineeData(p => ({ ...p, address: e.target.value }))} /></div>
         </Card>
 
         <Card title="Guarantor 1">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Input label="Full Name" required placeholder="Guarantor 1 name" value={guarantor1Data.name} onChange={e => setGuarantor1Data(p => ({ ...p, name: e.target.value }))} />
             <Input label="Mobile Number" required placeholder="10-digit mobile" maxLength={10} value={guarantor1Data.mobile} onChange={e => setGuarantor1Data(p => ({ ...p, mobile: e.target.value.replace(/\D/g, '') }))} />
-            <Input label="Email" type="email" value={guarantor1Data.email} onChange={e => setGuarantor1Data(p => ({ ...p, email: e.target.value }))} />
-            <Input label="Aadhaar Number" placeholder="12-digit Aadhaar" maxLength={12} value={guarantor1Data.aadhar} onChange={e => setGuarantor1Data(p => ({ ...p, aadhar: e.target.value.replace(/\D/g, '') }))} />
-            <Input label="PAN Number" placeholder="ABCDE1234F" maxLength={10} value={guarantor1Data.pan} onChange={e => setGuarantor1Data(p => ({ ...p, pan: e.target.value.toUpperCase() }))} />
+            <Input label="Email" required type="email" value={guarantor1Data.email} onChange={e => setGuarantor1Data(p => ({ ...p, email: e.target.value }))} />
+            <Input label="Aadhaar Number" required placeholder="12-digit Aadhaar" maxLength={12} value={guarantor1Data.aadhar} onChange={e => setGuarantor1Data(p => ({ ...p, aadhar: e.target.value.replace(/\D/g, '') }))} />
+            <Input label="PAN Number" required placeholder="ABCDE1234F" maxLength={10} value={guarantor1Data.pan} onChange={e => setGuarantor1Data(p => ({ ...p, pan: e.target.value.toUpperCase() }))} />
             <Select label="Relationship" required options={relOptions} placeholder="Select" value={guarantor1Data.relationship} onChange={e => setGuarantor1Data(p => ({ ...p, relationship: e.target.value }))} />
-            <Input label="Occupation" value={guarantor1Data.occupation} onChange={e => setGuarantor1Data(p => ({ ...p, occupation: e.target.value }))} />
-            <Input label="Monthly Income (₹)" type="number" value={guarantor1Data.income} onChange={e => setGuarantor1Data(p => ({ ...p, income: e.target.value }))} />
+            <Input label="Occupation" required value={guarantor1Data.occupation} onChange={e => setGuarantor1Data(p => ({ ...p, occupation: e.target.value }))} />
+            <Input label="Monthly Income (₹)" required type="number" value={guarantor1Data.income} onChange={e => setGuarantor1Data(p => ({ ...p, income: e.target.value }))} />
           </div>
-          <div className="mt-4"><Textarea label="Address" rows={2} value={guarantor1Data.address} onChange={e => setGuarantor1Data(p => ({ ...p, address: e.target.value }))} /></div>
+          <div className="mt-4"><Textarea label="Address" required rows={2} value={guarantor1Data.address} onChange={e => setGuarantor1Data(p => ({ ...p, address: e.target.value }))} /></div>
         </Card>
 
         <Card title="Guarantor 2 (Optional)">
@@ -411,15 +480,22 @@ export default function AddCustomerPage() {
                   {uploaded ? (
                     <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--accent-tint)', border: '1px solid var(--border)' }}>
                       <div className="flex items-center gap-2 min-w-0">
-                        <CheckCircle size={16} style={{ color: 'var(--success)', flexShrink: 0 }} />
+                        <CheckCircle size={16} style={{ color: confirmedDocs[doc.id] ? 'var(--success)' : 'var(--accent)', flexShrink: 0 }} />
                         <div className="min-w-0">
                           <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{uploaded.name}</p>
                           <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>{(uploaded.size / 1024).toFixed(1)} KB</p>
                         </div>
                       </div>
-                      <button onClick={() => setUploadedDocs(p => ({ ...p, [doc.id]: null }))} className="p-1.5 rounded-lg ml-2" style={{ color: 'var(--error)' }}>
-                        <X size={14} />
-                      </button>
+                      <div className="flex items-center gap-2 ml-2">
+                        {confirmedDocs[doc.id] ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--success)' }}>Confirmed</span>
+                        ) : (
+                          <button onClick={() => { setConfirmedDocs(p => ({ ...p, [doc.id]: true })); showToast(`${uploaded.name} confirmed`, 'success') }} className="text-[10px] px-2 py-1 rounded-lg font-semibold" style={{ background: 'var(--primary)', color: '#fff' }}>Confirm</button>
+                        )}
+                        <button onClick={() => { setUploadedDocs(p => ({ ...p, [doc.id]: null })); setConfirmedDocs(p => { const c = { ...p }; delete c[doc.id]; return c }) }} className="p-1.5 rounded-lg" style={{ color: 'var(--error)' }}>
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <label className="block cursor-pointer">
@@ -455,7 +531,6 @@ export default function AddCustomerPage() {
         <div className="flex justify-between">
           <Button variant="outline" onClick={handleBack}><ChevronLeft size={15} /> Back</Button>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={handleNext}>Skip <ChevronRight size={15} /></Button>
             <Button onClick={handleNext}>Save & Preview <ChevronRight size={15} /></Button>
           </div>
         </div>

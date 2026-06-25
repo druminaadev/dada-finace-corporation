@@ -42,6 +42,7 @@ export default function LoanApplicationPage() {
         localStorage.setItem(testKey, 'test')
         localStorage.removeItem(testKey)
       } catch (e) {
+        void e
         setShowStorageWarning(true)
       }
     }

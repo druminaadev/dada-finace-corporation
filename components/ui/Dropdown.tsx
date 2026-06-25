@@ -193,12 +193,12 @@ export function Dropdown({
         className="inline-flex items-center gap-2 h-9 px-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none"
         style={{
           background: triggerBg,
-          border: `1px solid ${open ? 'var(--primary)' : 'var(--border)'}`,
-          color: 'var(--text-primary)',
-          boxShadow: open ? '0 0 0 3px rgba(67,118,108,0.15)' : 'none',
+          border: variant === 'ghost' ? '1px solid transparent' : `1px solid ${open ? 'var(--primary)' : 'var(--border)'}`,
+          color: variant === 'ghost' ? 'inherit' : 'var(--text-primary)',
+          boxShadow: (open && variant !== 'ghost') ? '0 0 0 3px rgba(67,118,108,0.15)' : 'none',
         }}
-        onMouseEnter={e => { if (!open && !disabled) e.currentTarget.style.borderColor = 'var(--primary)' }}
-        onMouseLeave={e => { if (!open && !disabled) e.currentTarget.style.borderColor = 'var(--border)' }}
+        onMouseEnter={e => { if (!open && !disabled && variant !== 'ghost') e.currentTarget.style.borderColor = 'var(--primary)' }}
+        onMouseLeave={e => { if (!open && !disabled && variant !== 'ghost') e.currentTarget.style.borderColor = 'var(--border)' }}
       >
         {typeof trigger === 'string' ? (
           <>

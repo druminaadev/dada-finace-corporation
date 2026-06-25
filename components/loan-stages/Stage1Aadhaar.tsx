@@ -4,13 +4,16 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useLoanDraftStore } from '@/store/loanDraftStore'
+import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { Send, CheckCircle, ArrowRight, User, Phone, MapPin, Calendar } from 'lucide-react'
 
 const FRONTEND_ONLY = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 export function Stage1Aadhaar({ onNext }: { onNext: () => void }) {
   const { showToast } = useUIStore()
+  const { token } = useAuthStore()
   const {
     stage1,
     otpSent,
@@ -19,6 +22,7 @@ export function Stage1Aadhaar({ onNext }: { onNext: () => void }) {
     setStage1,
     setOtpState,
     completeStage,
+    setDraftId,
   } = useLoanDraftStore()
 
   const [aadhaar, setAadhaar] = useState('')
@@ -48,7 +52,7 @@ export function Stage1Aadhaar({ onNext }: { onNext: () => void }) {
     }
 
     try {
-      const res = await fetch('/api/loan-application/otp/send', {
+      const res = await fetch(`${API_BASE}/loan-application/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aadhaar }),
@@ -106,7 +110,8 @@ export function Stage1Aadhaar({ onNext }: { onNext: () => void }) {
     }
 
     try {
-      const res = await fetch('/api/loan-application/otp/verify', {
+      // 1. Verify OTP with the backend
+      const res = await fetch(`${API_BASE}/loan-application/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aadhaar, otp }),
@@ -114,6 +119,35 @@ export function Stage1Aadhaar({ onNext }: { onNext: () => void }) {
       const data = await res.json()
 
       if (!res.ok) throw new Error(data.message || 'Invalid OTP')
+
+      // 2. Create the draft on the backend
+      const draftRes = await fetch(`${API_BASE}/loan-application/drafts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const draftData = await draftRes.json()
+      if (!draftRes.ok) throw new Error(draftData.message || 'Failed to initialize draft')
+
+      const draftId = draftData.data.id
+      setDraftId(draftId)
+
+      // 3. Save Stage 1 verified Aadhaar details to the draft
+      const saveRes = await fetch(`${API_BASE}/loan-application/drafts/${draftId}/stage/1`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          aadhaarVerified: true,
+          aadhaarData: data.data.aadhaarData,
+        })
+      })
+      const saveResult = await saveRes.json()
+      if (!saveRes.ok) throw new Error(saveResult.message || 'Failed to save Stage 1 details')
 
       setStage1({
         aadhaarVerified: true,

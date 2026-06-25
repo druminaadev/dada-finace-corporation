@@ -12,6 +12,10 @@ export default function SecuritySettings() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!passwordForm.oldPassword.trim() || !passwordForm.newPassword.trim() || !passwordForm.confirmPassword.trim()) {
+      showToast('All fields are required', 'error')
+      return
+    }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       showToast('New passwords do not match', 'error')
       return
@@ -29,7 +33,7 @@ export default function SecuritySettings() {
 
       <form onSubmit={handleSave} className="space-y-4 max-w-md">
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Current Password</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Current Password *</label>
           <input
             type="password"
             value={passwordForm.oldPassword}
@@ -41,7 +45,7 @@ export default function SecuritySettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>New Password</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>New Password *</label>
           <input
             type="password"
             value={passwordForm.newPassword}
@@ -53,7 +57,7 @@ export default function SecuritySettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Confirm New Password</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Confirm New Password *</label>
           <input
             type="password"
             value={passwordForm.confirmPassword}

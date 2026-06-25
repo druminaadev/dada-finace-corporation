@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Camera, Save } from 'lucide-react'
+import { Save } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'
 
 export default function ProfileSettings() {
@@ -14,6 +14,10 @@ export default function ProfileSettings() {
   })
 
   const handleSave = () => {
+    if (!formData.name.trim()) { showToast('Full Name is required', 'error'); return }
+    if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) { showToast('Valid Email is required', 'error'); return }
+    if (!formData.phone.trim()) { showToast('Phone Number is required', 'error'); return }
+    if (!formData.department.trim()) { showToast('Department is required', 'error'); return }
     showToast('Profile updated successfully', 'success')
   }
 
@@ -27,12 +31,6 @@ export default function ProfileSettings() {
           >
             AU
           </div>
-          <button
-            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-white"
-            style={{ color: 'var(--primary)' }}
-          >
-            <Camera size={16} />
-          </button>
         </div>
         <div className="flex-1">
           <h2 className="text-xl font-bold mb-1" style={{ color: '#1e293b' }}>Profile Information</h2>
@@ -42,9 +40,10 @@ export default function ProfileSettings() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Full Name</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Full Name *</label>
           <input
             type="text"
+            required
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full px-4 py-2.5 rounded-lg border outline-none transition-all"
@@ -55,9 +54,10 @@ export default function ProfileSettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Email Address</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Email Address *</label>
           <input
             type="email"
+            required
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className="w-full px-4 py-2.5 rounded-lg border outline-none transition-all"
@@ -68,9 +68,10 @@ export default function ProfileSettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Phone Number</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Phone Number *</label>
           <input
             type="tel"
+            required
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             className="w-full px-4 py-2.5 rounded-lg border outline-none transition-all"
@@ -92,9 +93,10 @@ export default function ProfileSettings() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Department</label>
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#475569' }}>Department *</label>
           <input
             type="text"
+            required
             value={formData.department}
             onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             className="w-full px-4 py-2.5 rounded-lg border outline-none transition-all"

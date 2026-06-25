@@ -5,11 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, UserCircle, CreditCard,
-  ChevronDown, UserPlus, List, UserCheck, FilePlus,
+  ChevronDown, ChevronLeft, ChevronRight, UserPlus, List, UserCheck, FilePlus,
   FileText, CheckSquare, CheckCircle, Banknote, X,
   Calendar, BarChart2, TrendingUp, AlertTriangle, Star, Clock, Wallet,
-  ClipboardList, Activity, PanelLeftClose, PanelLeftOpen,
-  Calculator, Settings, HelpCircle, Building2
+  ClipboardList, Activity, Calculator, Settings, HelpCircle, Building2
 } from 'lucide-react'
 import { COLORS, GRADIENTS } from '@/lib/colors'
 
@@ -72,6 +71,7 @@ const NAV: NavGroup[] = [
     children: [
       { label: 'EMI Calculator', path: '/tools/emi-calculator', icon: Calculator },
       { label: 'Civil Score', path: '/civil-score', icon: Star },
+      { label: 'Expense Report', path: '/tools/expenses', icon: FileText },
     ],
   },
 ]
@@ -105,7 +105,9 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
-  const [expanded, setExpanded] = useState<string[]>(['Loans', 'EMI'])
+  const [expanded, setExpanded] = useState<string[]>(() =>
+    NAV.filter(g => g.children.some(c => pathname === c.path || pathname.startsWith(c.path + '/'))).map(g => g.label)
+  )
 
   const toggle = (label: string) =>
     setExpanded(p => p.includes(label) ? p.filter(x => x !== label) : [...p, label])
@@ -138,12 +140,10 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
         }}
       >
         <div
-          className="flex items-center justify-between shrink-0 h-16"
+          className="flex items-center shrink-0 h-16 px-4"
           style={{
             borderBottom: `1px solid ${COLORS.borderPrimary}`,
             background: COLORS.bgPrimary,
-            paddingLeft: collapsed ? '12px' : '16px',
-            paddingRight: collapsed ? '12px' : '16px',
           }}
         >
           {collapsed ? (
@@ -151,58 +151,57 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
               <BrandLogo />
             </div>
           ) : (
-            <>
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <BrandLogo />
-
-                <div className="min-w-0 flex-1">
-                  <div
-                    className="text-sm font-bold leading-tight truncate"
-                    style={{
-                      background: GRADIENTS.primary,
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                    }}
-                  >
-                    NEXZEN
-                  </div>
-                  <div
-                    className="text-[10px] font-medium mt-0.5 truncate"
-                    style={{ color: COLORS.primary }}
-                  >
-                    Loan Management
-                  </div>
+            <div className="flex items-center w-full gap-3">
+              <BrandLogo />
+              <div className="min-w-0 flex-1">
+                <div
+                  className="text-sm font-bold leading-tight truncate"
+                  style={{
+                    background: GRADIENTS.primary,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  NEXZEN
+                </div>
+                <div
+                  className="text-[10px] font-medium mt-0.5 truncate"
+                  style={{ color: COLORS.primary }}
+                >
+                  Loan Management
                 </div>
               </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                {onClose && (
-                  <button
-                    onClick={onClose}
-                    className="lg:hidden p-1.5 rounded-lg cursor-pointer transition-colors"
-                    style={{ color: COLORS.gray }}
-                    onMouseEnter={e => (e.currentTarget.style.background = COLORS.bgSecondary)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
-            </>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="lg:hidden p-1.5 rounded-lg cursor-pointer transition-colors shrink-0"
+                  style={{ color: COLORS.gray }}
+                  onMouseEnter={e => (e.currentTarget.style.background = COLORS.bgSecondary)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
           )}
         </div>
 
         <button
           onClick={onToggleCollapse}
-          className="hidden lg:flex absolute -right-3.5 top-12 w-7 h-7 border-2 border-white dark:border-slate-800 rounded-full items-center justify-center text-white transition-all z-50 shadow-lg hover:shadow-xl hover:scale-110"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden lg:flex absolute -right-4 top-[52px] w-8 h-8 rounded-full items-center justify-center transition-all duration-200 z-50 shadow-md hover:shadow-lg hover:scale-110 active:scale-95"
           style={{
-            background: 'linear-gradient(135deg, var(--primary), var(--primary-light))',
+            background: 'linear-gradient(135deg, var(--primary-dark), var(--primary))',
+            border: '2.5px solid var(--surface)',
+            boxShadow: '0 0 0 1px var(--primary), 0 4px 12px rgba(67,118,108,0.35)',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(135deg, var(--primary-light), var(--secondary))')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-light))')}
+          onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-light))')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(135deg, var(--primary-dark), var(--primary))')}
         >
-          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          {collapsed
+            ? <ChevronRight size={15} color="#FFFFFF" strokeWidth={3} />
+            : <ChevronLeft  size={15} color="#FFFFFF" strokeWidth={3} />}
         </button>
 
         <nav
@@ -218,6 +217,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
               label="Dashboard"
               collapsed={collapsed}
               onClick={onClose}
+              isTopLevel
             />
           </div>
 
@@ -399,14 +399,18 @@ interface NavItemProps {
   badge?: string
   collapsed: boolean
   onClick?: () => void
+  isTopLevel?: boolean
 }
 
-function NavItem({ href, active, icon: Icon, iconColor, label, badge, collapsed, onClick }: NavItemProps) {
+function NavItem({ href, active, icon: Icon, iconColor, label, badge, collapsed, onClick, isTopLevel }: NavItemProps) {
   return (
     <Link
       href={href}
       onClick={onClick}
-      className="relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150 group/item"
+      className={[
+        "relative flex items-center rounded-lg transition-all duration-150 group/item",
+        collapsed ? "justify-center w-full p-2.5" : "gap-2.5 px-2.5 py-2"
+      ].join(" ")}
       style={{
         color: active ? COLORS.dark : COLORS.gray,
         background: active ? COLORS.primaryAlpha12 : 'transparent',
@@ -423,19 +427,36 @@ function NavItem({ href, active, icon: Icon, iconColor, label, badge, collapsed,
         />
       )}
 
-      <Icon
-        size={14}
-        style={{
-          color: active ? COLORS.primary : iconColor,
-          opacity: active ? 1 : 0.65,
-          flexShrink: 0,
-          transition: 'color 0.15s',
-        }}
-      />
+      {isTopLevel && !collapsed ? (
+        <div
+          className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+          style={{ background: active ? `${iconColor}18` : `${iconColor}0c` }}
+        >
+          <Icon size={13} style={{ color: active ? COLORS.primary : iconColor }} />
+        </div>
+      ) : (
+        <Icon
+          size={collapsed ? 17 : 14}
+          style={{
+            color: active ? COLORS.primary : iconColor,
+            opacity: active ? 1 : 0.65,
+            flexShrink: 0,
+            transition: 'color 0.15s',
+          }}
+        />
+      )}
 
       {!collapsed && (
         <>
-          <span className="flex-1 text-sm leading-none truncate">{label}</span>
+          <span
+            className={[
+              "flex-1 text-left truncate",
+              isTopLevel ? "text-xs font-semibold uppercase tracking-wider" : "text-sm leading-none"
+            ].join(" ")}
+            style={{ color: active ? COLORS.dark : COLORS.gray }}
+          >
+            {label}
+          </span>
 
           {badge && (
             <span

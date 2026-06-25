@@ -4,6 +4,7 @@ import { useStore } from '@/store/appStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FileText, DollarSign, CheckCircle, Clock, Filter, Download, Printer, FileSpreadsheet, GitBranch, Tag, Activity } from 'lucide-react'
 import { Dropdown, SelectDropdown } from '@/components/ui/Dropdown'
+import { exportCSV, exportExcel, exportPDF, printTable } from '@/lib/exportUtils'
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   disbursed: { bg: 'rgba(16,185,129,0.12)', color: '#10B981' },
@@ -49,8 +50,25 @@ export default function LoanPortfolioPage() {
     { label: 'Pending Approval', value: filtered.filter(l => l.status === 'pending').length, icon: Clock, color: '#F59E0B', tint: 'rgba(245,158,11,0.12)' },
   ]
 
+  const handleExport = (formatType: string) => {
+    const dataToExport = enriched.map(l => ({
+      'Loan No': l.loanNo,
+      'Customer': l.customerName,
+      'Type': l.loanTypeName,
+      'Amount': l.amount,
+      'Outstanding': l.outstanding,
+      'Installments': l.installments,
+      'Status': l.status
+    }))
+    if (formatType === 'csv') exportCSV(dataToExport, 'Loan_Portfolio')
+    else if (formatType === 'excel') exportExcel(dataToExport, 'Loan_Portfolio')
+    else if (formatType === 'pdf') exportPDF(dataToExport, 'Loan Portfolio Report')
+    else if (formatType === 'print') printTable(dataToExport, 'Loan Portfolio Report')
+  }
+
   const exportItems = [
     { label: 'Export as CSV', value: 'csv', icon: FileSpreadsheet },
+    { label: 'Export as Excel', value: 'excel', icon: FileSpreadsheet },
     { label: 'Export as PDF', value: 'pdf', icon: Download },
     { label: 'Print Report', value: 'print', icon: Printer, dividerBefore: true },
   ]
@@ -67,7 +85,7 @@ export default function LoanPortfolioPage() {
             <Dropdown
               trigger={<span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white"><Download size={14} />Export</span>}
               items={exportItems}
-              onSelect={item => item.value === 'print' ? window.print() : alert(`Exporting as ${item.value}`)}
+              onSelect={item => handleExport(String(item.value ?? ''))}
               align="right"
               width={200}
               variant="ghost"

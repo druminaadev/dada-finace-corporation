@@ -6,18 +6,11 @@ import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/Button'
 import { Edit, Save } from 'lucide-react'
 
-function getLabel(score: number) {
-  if (score >= 800) return 'Excellent'
-  if (score >= 600) return 'Good'
-  if (score >= 400) return 'Average'
-  return 'Risky'
-}
-
 function DocumentContent() {
   const params = useSearchParams()
   const loanId = Number(params.get('loanId'))
   const docType = params.get('type') ?? 'contract'
-  const { loans, customers, employees, loanTypes, civilScores } = useStore()
+  const { loans, customers, employees, loanTypes } = useStore()
   const [isEditing, setIsEditing] = useState(false)
   const [savedHTML, setSavedHTML] = useState<string | null>(null)
 
@@ -25,7 +18,6 @@ function DocumentContent() {
   const customer = loan ? customers.find(c => c.id === loan.customerId) : null
   const employee = loan ? employees.find(e => e.id === loan.employeeId) : null
   const loanType = loan ? loanTypes.find(t => t.id === loan.loanTypeId) : null
-  const scoreData = customer ? (civilScores[customer.id] ?? { score: 700 }) : null
 
   const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
   const fmtDate = (d: string) => { try { return format(parseISO(d), 'dd/MM/yyyy') } catch { return d } }

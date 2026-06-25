@@ -6,14 +6,17 @@ import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { useLoanDraftStore } from '@/store/loanDraftStore'
+import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 
 const FRONTEND_ONLY = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onPrev: () => void }) {
   const { showToast } = useUIStore()
-  const { stage1, stage2, setStage2, completeStage } = useLoanDraftStore()
+  const { token } = useAuthStore()
+  const { stage1, stage2, draftId, setStage2, completeStage } = useLoanDraftStore()
 
   const [customer, setCustomer] = useState(stage2.customerDetails || {})
   const [loan, setLoan] = useState(stage2.loanDetails || { loanCategory: 'PERSONAL', interestType: 'FLAT' })
@@ -56,18 +59,149 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
   }, [loan.amount, loan.interestRate, loan.tenure, loan.interestType])
 
   const handleSave = async (andNext = false) => {
-    if (!customer.name?.trim() || !customer.phone?.trim()) {
-      showToast('Customer name and phone are required', 'error')
+    // Validate Customer Details
+    if (!customer.name?.trim()) {
+      showToast('Full Name is required', 'error')
       return
     }
-    if (!loan.amount || !loan.interestRate || !loan.tenure) {
-      showToast('Loan amount, interest rate, and tenure are required', 'error')
+    if (!customer.phone?.trim()) {
+      showToast('Mobile Number is required', 'error')
+      return
+    }
+    if (!/^\d{10}$/.test(customer.phone.trim())) {
+      showToast('Mobile Number must be 10 digits', 'error')
+      return
+    }
+    if (!customer.altPhone?.trim()) {
+      showToast('Alternative Mobile Number is required', 'error')
+      return
+    }
+    if (!/^\d{10}$/.test(customer.altPhone.trim())) {
+      showToast('Alternative Mobile Number must be 10 digits', 'error')
+      return
+    }
+    if (!customer.email?.trim()) {
+      showToast('Email is required', 'error')
+      return
+    }
+    if (!/\S+@\S+\.\S+/.test(customer.email.trim())) {
+      showToast('Please enter a valid email address', 'error')
+      return
+    }
+    if (!customer.dob?.trim()) {
+      showToast('Date of Birth is required', 'error')
+      return
+    }
+    if (!customer.age || parseInt(String(customer.age)) <= 0) {
+      showToast('Age is required and must be greater than 0', 'error')
+      return
+    }
+    if (!customer.gender?.trim()) {
+      showToast('Gender is required', 'error')
+      return
+    }
+    if (!customer.maritalStatus?.trim()) {
+      showToast('Marital Status is required', 'error')
+      return
+    }
+    if (!customer.occupation?.trim()) {
+      showToast('Occupation is required', 'error')
+      return
+    }
+    if (!customer.income || parseFloat(String(customer.income)) <= 0) {
+      showToast('Monthly Income is required and must be greater than 0', 'error')
+      return
+    }
+    if (!customer.fatherName?.trim()) {
+      showToast("Father's Name is required", 'error')
+      return
+    }
+    if (!customer.motherName?.trim()) {
+      showToast("Mother's Name is required", 'error')
+      return
+    }
+    if (!customer.pan?.trim()) {
+      showToast('PAN Number is required', 'error')
+      return
+    }
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(customer.pan.trim().toUpperCase())) {
+      showToast('Invalid PAN Number format (e.g. ABCDE1234F)', 'error')
+      return
+    }
+    if (!customer.bloodGroup?.trim()) {
+      showToast('Blood Group is required', 'error')
+      return
+    }
+    if (!customer.address?.trim()) {
+      showToast('Address is required', 'error')
+      return
+    }
+    if (!customer.businessInfo?.trim()) {
+      showToast('Business Information is required', 'error')
       return
     }
 
-    // Validate phone number
-    if (customer.phone && !/^\d{10}$/.test(customer.phone.trim())) {
-      showToast('Phone number must be 10 digits', 'error')
+    // Validate Bank Details
+    if (!customer.bankAccountNo?.trim()) {
+      showToast('Bank Account Number is required', 'error')
+      return
+    }
+    if (!customer.bankHolderName?.trim()) {
+      showToast('Account Holder Name is required', 'error')
+      return
+    }
+    if (!customer.bankName?.trim()) {
+      showToast('Bank Name is required', 'error')
+      return
+    }
+    if (!customer.bankBranch?.trim()) {
+      showToast('Bank Branch is required', 'error')
+      return
+    }
+    if (!customer.bankIfsc?.trim()) {
+      showToast('Bank IFSC Code is required', 'error')
+      return
+    }
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(customer.bankIfsc.trim().toUpperCase())) {
+      showToast('Invalid IFSC Code format (e.g. SBIN0012345)', 'error')
+      return
+    }
+
+    // Validate Loan Details
+    if (!loan.loanCategory?.trim()) {
+      showToast('Loan Category is required', 'error')
+      return
+    }
+    if (!loan.amount || parseFloat(String(loan.amount)) <= 0) {
+      showToast('Loan Amount is required and must be greater than 0', 'error')
+      return
+    }
+    if (!loan.interestRate || parseFloat(String(loan.interestRate)) <= 0) {
+      showToast('Interest Rate is required and must be greater than 0', 'error')
+      return
+    }
+    if (!loan.interestType?.trim()) {
+      showToast('Interest Type is required', 'error')
+      return
+    }
+    if (!loan.tenure || parseInt(String(loan.tenure)) <= 0) {
+      showToast('Tenure is required and must be greater than 0', 'error')
+      return
+    }
+    if (loan.processingFee === undefined || loan.processingFee === null || loan.processingFee === '' || parseFloat(String(loan.processingFee)) < 0) {
+      showToast('Processing Fee is required and must be 0 or greater', 'error')
+      return
+    }
+    if (!loan.emiStartDate?.trim()) {
+      showToast('EMI Start Date is required', 'error')
+      return
+    }
+    if (!loan.purpose?.trim()) {
+      showToast('Loan Purpose is required', 'error')
+      return
+    }
+    if (!loan.notes?.trim()) {
+      showToast('Notes is required', 'error')
       return
     }
 
@@ -76,6 +210,20 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
     try {
       if (FRONTEND_ONLY) {
         await new Promise(r => setTimeout(r, 500))
+      } else {
+        const res = await fetch(`${API_BASE}/loan-application/drafts/${draftId}/stage/2`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            customerDetails: customer,
+            loanDetails: { ...loan, emiAmount }
+          })
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'Failed to save Stage 2 details')
       }
       
       setStage2({ customerDetails: customer, loanDetails: { ...loan, emiAmount } })
@@ -101,12 +249,13 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Input label="Full Name" required value={customer.name || ''} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
           <Input label="Mobile Number" required value={customer.phone || ''} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-          <Input label="Alt Mobile" value={customer.altPhone || ''} onChange={(e) => setCustomer({ ...customer, altPhone: e.target.value })} />
-          <Input label="Email" type="email" value={customer.email || ''} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} />
-          <Input label="Date of Birth" type="date" value={customer.dob || ''} onChange={(e) => setCustomer({ ...customer, dob: e.target.value })} />
-          <Input label="Age" type="number" value={customer.age || ''} onChange={(e) => setCustomer({ ...customer, age: e.target.value })} />
+          <Input label="Alt Mobile" required value={customer.altPhone || ''} onChange={(e) => setCustomer({ ...customer, altPhone: e.target.value })} />
+          <Input label="Email" required type="email" value={customer.email || ''} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} />
+          <Input label="Date of Birth" required type="date" value={customer.dob || ''} onChange={(e) => setCustomer({ ...customer, dob: e.target.value })} />
+          <Input label="Age" required type="number" value={customer.age || ''} onChange={(e) => setCustomer({ ...customer, age: e.target.value })} />
           <Select
             label="Gender"
+            required
             value={customer.gender || ''}
             onChange={(e) => setCustomer({ ...customer, gender: e.target.value })}
             options={[
@@ -118,6 +267,7 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
           />
           <Select
             label="Marital Status"
+            required
             value={customer.maritalStatus || ''}
             onChange={(e) => setCustomer({ ...customer, maritalStatus: e.target.value })}
             options={[
@@ -128,28 +278,28 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
             ]}
             placeholder="Select status"
           />
-          <Input label="Occupation" value={customer.occupation || ''} onChange={(e) => setCustomer({ ...customer, occupation: e.target.value })} />
-          <Input label="Monthly Income (₹)" type="number" value={customer.income || ''} onChange={(e) => setCustomer({ ...customer, income: e.target.value })} />
-          <Input label="Father's Name" value={customer.fatherName || ''} onChange={(e) => setCustomer({ ...customer, fatherName: e.target.value })} />
-          <Input label="Mother's Name" value={customer.motherName || ''} onChange={(e) => setCustomer({ ...customer, motherName: e.target.value })} />
-          <Input label="PAN Number" value={customer.pan || ''} onChange={(e) => setCustomer({ ...customer, pan: e.target.value.toUpperCase() })} maxLength={10} />
-          <Input label="Blood Group" value={customer.bloodGroup || ''} onChange={(e) => setCustomer({ ...customer, bloodGroup: e.target.value })} />
+          <Input label="Occupation" required value={customer.occupation || ''} onChange={(e) => setCustomer({ ...customer, occupation: e.target.value })} />
+          <Input label="Monthly Income (₹)" required type="number" value={customer.income || ''} onChange={(e) => setCustomer({ ...customer, income: e.target.value })} />
+          <Input label="Father's Name" required value={customer.fatherName || ''} onChange={(e) => setCustomer({ ...customer, fatherName: e.target.value })} />
+          <Input label="Mother's Name" required value={customer.motherName || ''} onChange={(e) => setCustomer({ ...customer, motherName: e.target.value })} />
+          <Input label="PAN Number" required value={customer.pan || ''} onChange={(e) => setCustomer({ ...customer, pan: e.target.value.toUpperCase() })} maxLength={10} />
+          <Input label="Blood Group" required value={customer.bloodGroup || ''} onChange={(e) => setCustomer({ ...customer, bloodGroup: e.target.value })} />
         </div>
         <div className="mt-4">
-          <Textarea label="Address" rows={2} value={customer.address || ''} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} />
+          <Textarea label="Address" required rows={2} value={customer.address || ''} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} />
         </div>
         <div className="mt-4">
-          <Textarea label="Business Information" rows={2} value={customer.businessInfo || ''} onChange={(e) => setCustomer({ ...customer, businessInfo: e.target.value })} placeholder="Business name, type, years in operation..." />
+          <Textarea label="Business Information" required rows={2} value={customer.businessInfo || ''} onChange={(e) => setCustomer({ ...customer, businessInfo: e.target.value })} placeholder="Business name, type, years in operation..." />
         </div>
       </Card>
 
       <Card title="Bank Details">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Input label="Account Number" value={customer.bankAccountNo || ''} onChange={(e) => setCustomer({ ...customer, bankAccountNo: e.target.value })} />
-          <Input label="Account Holder Name" value={customer.bankHolderName || ''} onChange={(e) => setCustomer({ ...customer, bankHolderName: e.target.value })} />
-          <Input label="Bank Name" value={customer.bankName || ''} onChange={(e) => setCustomer({ ...customer, bankName: e.target.value })} />
-          <Input label="Branch" value={customer.bankBranch || ''} onChange={(e) => setCustomer({ ...customer, bankBranch: e.target.value })} />
-          <Input label="IFSC Code" value={customer.bankIfsc || ''} onChange={(e) => setCustomer({ ...customer, bankIfsc: e.target.value.toUpperCase() })} maxLength={11} />
+          <Input label="Account Number" required value={customer.bankAccountNo || ''} onChange={(e) => setCustomer({ ...customer, bankAccountNo: e.target.value })} />
+          <Input label="Account Holder Name" required value={customer.bankHolderName || ''} onChange={(e) => setCustomer({ ...customer, bankHolderName: e.target.value })} />
+          <Input label="Bank Name" required value={customer.bankName || ''} onChange={(e) => setCustomer({ ...customer, bankName: e.target.value })} />
+          <Input label="Branch" required value={customer.bankBranch || ''} onChange={(e) => setCustomer({ ...customer, bankBranch: e.target.value })} />
+          <Input label="IFSC Code" required value={customer.bankIfsc || ''} onChange={(e) => setCustomer({ ...customer, bankIfsc: e.target.value.toUpperCase() })} maxLength={11} />
         </div>
       </Card>
 
@@ -179,8 +329,8 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
             ]}
           />
           <Input label="Tenure (months)" required type="number" value={loan.tenure || ''} onChange={(e) => setLoan({ ...loan, tenure: e.target.value })} placeholder="e.g. 12" />
-          <Input label="Processing Fee (₹)" type="number" value={loan.processingFee || ''} onChange={(e) => setLoan({ ...loan, processingFee: e.target.value })} placeholder="0" />
-          <Input label="EMI Start Date" type="date" value={loan.emiStartDate || ''} onChange={(e) => setLoan({ ...loan, emiStartDate: e.target.value })} />
+          <Input label="Processing Fee (₹)" required type="number" value={loan.processingFee || ''} onChange={(e) => setLoan({ ...loan, processingFee: e.target.value })} placeholder="0" />
+          <Input label="EMI Start Date" required type="date" value={loan.emiStartDate || ''} onChange={(e) => setLoan({ ...loan, emiStartDate: e.target.value })} />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
@@ -203,10 +353,10 @@ export function Stage2CustomerLoan({ onNext, onPrev }: { onNext: () => void; onP
         </div>
 
         <div className="mt-4">
-          <Textarea label="Loan Purpose" rows={2} value={loan.purpose || ''} onChange={(e) => setLoan({ ...loan, purpose: e.target.value })} placeholder="Purpose of the loan..." />
+          <Textarea label="Loan Purpose" required rows={2} value={loan.purpose || ''} onChange={(e) => setLoan({ ...loan, purpose: e.target.value })} placeholder="Purpose of the loan..." />
         </div>
         <div className="mt-4">
-          <Textarea label="Notes" rows={2} value={loan.notes || ''} onChange={(e) => setLoan({ ...loan, notes: e.target.value })} placeholder="Additional notes..." />
+          <Textarea label="Notes" required rows={2} value={loan.notes || ''} onChange={(e) => setLoan({ ...loan, notes: e.target.value })} placeholder="Additional notes..." />
         </div>
       </Card>
 

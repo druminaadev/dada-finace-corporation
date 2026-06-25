@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { format, parseISO } from 'date-fns'
 import { Receipt, TrendingUp, Clock, Banknote, CalendarRange, Download, Printer, FileSpreadsheet } from 'lucide-react'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { exportCSV, exportExcel, exportPDF, printTable } from '@/lib/exportUtils'
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
   Cash:           { bg: 'rgba(245,158,11,0.12)',  color: '#F59E0B' },
@@ -35,8 +36,31 @@ export default function TransactionHistoryPage() {
 
   const inputStyle = { background: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border)' }
 
+  const handleExport = (formatType: string) => {
+    const dataToExport = collected.map(e => {
+      const loan = loans.find(l => l.id === e.loanId)
+      const customer = loan ? customers.find(c => c.id === loan.customerId) : null
+      const emp = employees.find(x => x.id === e.collectedBy)
+      return {
+        'Date': e.paidDate ?? '—',
+        'Loan No': loan?.loanNo ?? '—',
+        'Customer': customer?.name ?? '—',
+        'EMI #': `#${e.instNo}`,
+        'Amount': e.paidAmount ?? 0,
+        'Mode': e.paymentMode ?? '—',
+        'Collected By': emp?.name ?? '—',
+        'Status': e.status === 'paid' ? 'On Time' : 'Late'
+      }
+    })
+    if (formatType === 'csv') exportCSV(dataToExport, 'Transaction_History')
+    else if (formatType === 'excel') exportExcel(dataToExport, 'Transaction_History')
+    else if (formatType === 'pdf') exportPDF(dataToExport, 'Transaction History Report')
+    else if (formatType === 'print') printTable(dataToExport, 'Transaction History Report')
+  }
+
   const exportItems = [
     { label: 'Export as CSV', value: 'csv', icon: FileSpreadsheet },
+    { label: 'Export as Excel', value: 'excel', icon: FileSpreadsheet },
     { label: 'Export as PDF', value: 'pdf', icon: Download },
     { label: 'Print Report', value: 'print', icon: Printer, dividerBefore: true },
   ]
@@ -53,7 +77,7 @@ export default function TransactionHistoryPage() {
             <Dropdown
               trigger={<span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white"><Download size={14} />Export</span>}
               items={exportItems}
-              onSelect={item => item.value === 'print' ? window.print() : alert(`Exporting as ${item.value}`)}
+              onSelect={item => handleExport(String(item.value ?? ''))}
               align="right"
               width={200}
               variant="ghost"

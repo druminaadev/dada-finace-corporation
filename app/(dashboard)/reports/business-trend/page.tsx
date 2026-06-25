@@ -6,6 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, startOfMonth, parseISO } from 'date-fns'
 import { TrendingUp, DollarSign, PiggyBank, BarChart2, Download, Printer, FileSpreadsheet } from 'lucide-react'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { exportCSV, exportExcel, exportPDF, printTable } from '@/lib/exportUtils'
 
 export default function BusinessTrendPage() {
   const { loans, emis } = useStore()
@@ -44,8 +45,23 @@ export default function BusinessTrendPage() {
     contentStyle: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text-primary)', fontSize: '12px' },
   }
 
+  const handleExport = (formatType: string) => {
+    const dataToExport = [...monthlyData].reverse().map(row => ({
+      'Month': row.month,
+      'Disbursed': row.disbursed,
+      'Collected': row.collected,
+      'Interest': row.interest,
+      'Charges': row.fileCharges
+    }))
+    if (formatType === 'csv') exportCSV(dataToExport, 'Business_Trend')
+    else if (formatType === 'excel') exportExcel(dataToExport, 'Business_Trend')
+    else if (formatType === 'pdf') exportPDF(dataToExport, 'Business Trend Report')
+    else if (formatType === 'print') printTable(dataToExport, 'Business Trend Report')
+  }
+
   const exportItems = [
     { label: 'Export as CSV', value: 'csv', icon: FileSpreadsheet },
+    { label: 'Export as Excel', value: 'excel', icon: FileSpreadsheet },
     { label: 'Export as PDF', value: 'pdf', icon: Download },
     { label: 'Print Report', value: 'print', icon: Printer, dividerBefore: true },
   ]
@@ -62,7 +78,7 @@ export default function BusinessTrendPage() {
             <Dropdown
               trigger={<span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white"><Download size={14} />Export</span>}
               items={exportItems}
-              onSelect={item => item.value === 'print' ? window.print() : alert(`Exporting as ${item.value}`)}
+              onSelect={item => handleExport(String(item.value ?? ''))}
               align="right"
               width={200}
               variant="ghost"

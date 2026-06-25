@@ -25,6 +25,7 @@ export interface CivilScoreEvent {
 export interface Employee {
   id: number; name: string; code: string; branchId: number
   contact: string; role: string; email: string
+  photoUrl?: string
 }
 
 export interface CustomerBank {
@@ -156,9 +157,12 @@ const safeStorage = {
       if (parsed?.state?.customers) {
         parsed.state.customers = parsed.state.customers.map((c: Customer) => stripPhotos(c))
       }
+      if (parsed?.state?.employees) {
+        parsed.state.employees = parsed.state.employees.map((e: Employee) => stripPhotos(e))
+      }
       localStorage.setItem(name, JSON.stringify(parsed))
     } catch (e) {
-      // If still too large, persist everything except customers' photos
+      // If still too large, persist everything except customers' and employees' photos
       try {
         const parsed = JSON.parse(value)
         if (parsed?.state?.customers) {
@@ -168,6 +172,11 @@ const safeStorage = {
             guarantor1: c.guarantor1 ? { ...c.guarantor1, photoUrl: '', documentUrl: '' } : null,
             guarantor2: c.guarantor2 ? { ...c.guarantor2, photoUrl: '', documentUrl: '' } : null,
             bank: c.bank ? { ...c.bank, documentUrl: '' } : c.bank,
+          }))
+        }
+        if (parsed?.state?.employees) {
+          parsed.state.employees = parsed.state.employees.map((e: Employee) => ({
+            ...e, photoUrl: '',
           }))
         }
         localStorage.setItem(name, JSON.stringify(parsed))

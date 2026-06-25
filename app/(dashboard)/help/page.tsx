@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { 
   Search, Book, MessageCircle, Mail, Phone, Video, 
-  HelpCircle, ChevronDown, Send, FileText, Zap, Users,
+  ChevronDown, Send, FileText, Zap, Users,
   CheckCircle
 } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'

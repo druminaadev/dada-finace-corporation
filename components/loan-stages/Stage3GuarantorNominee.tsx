@@ -7,7 +7,13 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { User, Users, Shield, Camera, Upload, X, CheckCircle } from 'lucide-react'
+import { ImageUploadWithProgress } from '@/components/ui/ImageUploadWithProgress'
+import { User, Users, Shield, Upload, CheckCircle, X } from 'lucide-react'
+import { validatePhone, validateAadhaar, sanitizeInput } from '@/lib/validation'
+import { useAuthStore } from '@/store/authStore'
+
+const FRONTEND_ONLY = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 const RELATIONSHIPS = [
   { value: 'Father', label: 'Father' },
@@ -30,23 +36,13 @@ interface PersonFormProps {
 }
 
 function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) {
-  const [photoPreview, setPhotoPreview] = useState<string | null>(data.photoFile || null)
+  const [photoConfirmed, setPhotoConfirmed] = useState(false)
   const [docPreview, setDocPreview] = useState<string | null>(data.documentFile || null)
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Store only file name, not base64 to avoid localStorage quota
-      const fileName = file.name
-      setPhotoPreview(URL.createObjectURL(file))
-      onChange({ ...data, photoFile: fileName })
-    }
-  }
+  const { showToast } = useUIStore()
 
   const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Store only file name, not base64 to avoid localStorage quota
       const fileName = file.name
       setDocPreview(fileName)
       onChange({ ...data, documentFile: fileName })
@@ -58,39 +54,16 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
   return (
     <Card title={title} icon={icon}>
       <div className="space-y-4">
-        {/* Photo Upload */}
-        <div>
-          <label className="text-xs font-semibold mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-            Photo {required && <span style={{ color: 'var(--error)' }}>*</span>}
-          </label>
-          <div className="flex items-center gap-4">
-            {photoPreview ? (
-              <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2" style={{ borderColor: 'var(--accent)' }}>
-                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  onClick={() => {
-                    setPhotoPreview(null)
-                    onChange({ ...data, photoFile: undefined })
-                  }}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white hover:bg-red-600"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ) : (
-              <div className="w-24 h-24 rounded-xl flex items-center justify-center" style={{ background: 'var(--hover)', border: '2px dashed var(--border)' }}>
-                <Camera size={32} style={{ color: 'var(--text-secondary)' }} />
-              </div>
-            )}
-            <label className="cursor-pointer">
-              <div className="px-4 py-2 rounded-lg font-semibold text-sm transition-all" style={{ background: 'var(--accent)', color: '#fff' }}>
-                <Camera size={16} className="inline mr-2" />
-                {photoPreview ? 'Change Photo' : 'Upload Photo'}
-              </div>
-              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-            </label>
-          </div>
-        </div>
+        {/* Photo Upload with Progress */}
+        <ImageUploadWithProgress
+          label="Photo"
+          required={required}
+          value={data.photoFile || null}
+          onChange={(file, preview) => {
+            onChange({ ...data, photoFile: preview || undefined })
+          }}
+          onConfirm={(confirmed) => setPhotoConfirmed(confirmed)}
+        />
 
         {/* Personal Details */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -98,22 +71,26 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
             label="Full Name"
             required={required}
             value={data.name || ''}
-            onChange={(e) => onChange({ ...data, name: e.target.value })}
+            onChange={(e) => onChange({ ...data, name: sanitizeInput(e.target.value) })}
             placeholder="Enter full name"
           />
           <Input
             label="Mobile Number"
             required={required}
             value={data.phone || ''}
-            onChange={(e) => onChange({ ...data, phone: e.target.value })}
+            onChange={(e) => {
+              const phone = e.target.value.replace(/\D/g, '')
+              onChange({ ...data, phone })
+            }}
             placeholder="10-digit mobile"
             maxLength={10}
           />
           <Input
             label="Email"
+            required={required}
             type="email"
             value={data.email || ''}
-            onChange={(e) => onChange({ ...data, email: e.target.value })}
+            onChange={(e) => onChange({ ...data, email: sanitizeInput(e.target.value) })}
             placeholder="email@example.com"
           />
           <Input
@@ -126,8 +103,9 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
           />
           <Input
             label="PAN Number"
+            required={required}
             value={data.pan || ''}
-            onChange={(e) => onChange({ ...data, pan: e.target.value.toUpperCase() })}
+            onChange={(e) => onChange({ ...data, pan: sanitizeInput(e.target.value.toUpperCase()) })}
             placeholder="ABCDE1234F"
             maxLength={10}
           />
@@ -141,24 +119,28 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
           />
           <Input
             label="Date of Birth"
+            required={required}
             type="date"
             value={data.dob || ''}
             onChange={(e) => onChange({ ...data, dob: e.target.value })}
           />
           <Input
             label="Age"
+            required={required}
             value={age.toString()}
             readOnly
             placeholder="Auto-calculated"
           />
           <Input
             label="Occupation"
+            required={required}
             value={data.occupation || ''}
-            onChange={(e) => onChange({ ...data, occupation: e.target.value })}
+            onChange={(e) => onChange({ ...data, occupation: sanitizeInput(e.target.value) })}
             placeholder="Enter occupation"
           />
           <Input
             label="Monthly Income (₹)"
+            required={required}
             type="number"
             value={data.income || ''}
             onChange={(e) => onChange({ ...data, income: e.target.value })}
@@ -171,7 +153,7 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
           required={required}
           rows={2}
           value={data.address || ''}
-          onChange={(e) => onChange({ ...data, address: e.target.value })}
+          onChange={(e) => onChange({ ...data, address: sanitizeInput(e.target.value) })}
           placeholder="Enter complete address"
         />
 
@@ -191,6 +173,7 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
                     onChange({ ...data, documentFile: undefined })
                   }}
                   className="ml-2 p-1 rounded-full hover:bg-red-100 text-red-500"
+                  type="button"
                 >
                   <X size={14} />
                 </button>
@@ -211,28 +194,155 @@ function PersonForm({ title, icon, data, onChange, required }: PersonFormProps) 
   )
 }
 
+function validatePerson(
+  person: Partial<PersonDetails>,
+  label: string,
+  showToast: (msg: string, type: 'error' | 'success' | 'warning' | 'info') => void
+): boolean {
+  if (!person.photoFile) {
+    showToast(`Photo is required for ${label}`, 'error')
+    return false
+  }
+  if (!person.name?.trim()) {
+    showToast(`Full Name is required for ${label}`, 'error')
+    return false
+  }
+  if (!person.phone?.trim()) {
+    showToast(`Mobile Number is required for ${label}`, 'error')
+    return false
+  }
+  if (!/^\d{10}$/.test(person.phone.trim())) {
+    showToast(`Mobile Number must be 10 digits for ${label}`, 'error')
+    return false
+  }
+  if (!person.email?.trim()) {
+    showToast(`Email is required for ${label}`, 'error')
+    return false
+  }
+  if (!/\S+@\S+\.\S+/.test(person.email.trim())) {
+    showToast(`Please enter a valid email address for ${label}`, 'error')
+    return false
+  }
+  if (!person.aadhaar?.trim()) {
+    showToast(`Aadhaar Number is required for ${label}`, 'error')
+    return false
+  }
+  if (!/^\d{12}$/.test(person.aadhaar.trim())) {
+    showToast(`Aadhaar Number must be 12 digits for ${label}`, 'error')
+    return false
+  }
+  if (!person.pan?.trim()) {
+    showToast(`PAN Number is required for ${label}`, 'error')
+    return false
+  }
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(person.pan.trim().toUpperCase())) {
+    showToast(`Invalid PAN Number format (e.g. ABCDE1234F) for ${label}`, 'error')
+    return false
+  }
+  if (!person.relationship?.trim()) {
+    showToast(`Relationship is required for ${label}`, 'error')
+    return false
+  }
+  if (!person.dob?.trim()) {
+    showToast(`Date of Birth is required for ${label}`, 'error')
+    return false
+  }
+  if (!person.occupation?.trim()) {
+    showToast(`Occupation is required for ${label}`, 'error')
+    return false
+  }
+  if (!person.income || parseFloat(String(person.income)) <= 0) {
+    showToast(`Monthly Income is required and must be greater than 0 for ${label}`, 'error')
+    return false
+  }
+  if (!person.address?.trim()) {
+    showToast(`Address is required for ${label}`, 'error')
+    return false
+  }
+  if (!person.documentFile) {
+    showToast(`Identity Document is required for ${label}`, 'error')
+    return false
+  }
+  return true
+}
+
+function isPersonPartiallyFilled(person: Partial<PersonDetails>): boolean {
+  return !!(
+    person.photoFile ||
+    person.name?.trim() ||
+    person.phone?.trim() ||
+    person.email?.trim() ||
+    person.aadhaar?.trim() ||
+    person.pan?.trim() ||
+    person.relationship?.trim() ||
+    person.dob?.trim() ||
+    person.occupation?.trim() ||
+    person.income ||
+    person.address?.trim() ||
+    person.documentFile
+  )
+}
+
 export default function Stage3GuarantorNominee() {
-  const { stage3, setStage3, completeStage, setCurrentStage } = useLoanDraftStore()
+  const { token } = useAuthStore()
+  const { stage3, draftId, setStage3, completeStage, setCurrentStage } = useLoanDraftStore()
   const { showToast } = useUIStore()
   const [activeNominee, setActiveNominee] = useState(0)
   const [activeGuarantor, setActiveGuarantor] = useState(0)
+  const [saving, setSaving] = useState(false)
 
-  const handleNext = () => {
-    const nominee1Filled = stage3.nominees[0].name && stage3.nominees[0].phone && stage3.nominees[0].aadhaar
-    const guarantor1Filled = stage3.guarantors[0].name && stage3.guarantors[0].phone && stage3.guarantors[0].aadhaar
-
-    if (!nominee1Filled) {
-      showToast('Please fill at least one nominee details', 'error')
-      return
-    }
-    if (!guarantor1Filled) {
-      showToast('Please fill at least one guarantor details', 'error')
+  const handleNext = async () => {
+    // Validate nominee 1
+    const nominee1 = stage3.nominees[0]
+    if (!validatePerson(nominee1, 'Nominee 1', showToast)) {
       return
     }
 
-    completeStage(3)
-    setCurrentStage(4)
-    showToast('Stage 3 completed successfully!', 'success')
+    // Validate nominee 2 if partially filled
+    const nominee2 = stage3.nominees[1]
+    if (nominee2 && isPersonPartiallyFilled(nominee2)) {
+      if (!validatePerson(nominee2, 'Nominee 2', showToast)) {
+        return
+      }
+    }
+
+    // Validate guarantor 1
+    const guarantor1 = stage3.guarantors[0]
+    if (!validatePerson(guarantor1, 'Guarantor 1', showToast)) {
+      return
+    }
+
+    // Validate guarantor 2 if partially filled
+    const guarantor2 = stage3.guarantors[1]
+    if (guarantor2 && isPersonPartiallyFilled(guarantor2)) {
+      if (!validatePerson(guarantor2, 'Guarantor 2', showToast)) {
+        return
+      }
+    }
+
+    setSaving(true)
+    try {
+      if (!FRONTEND_ONLY) {
+        const res = await fetch(`${API_BASE}/loan-application/drafts/${draftId}/stage/3`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ nominees: stage3.nominees, guarantors: stage3.guarantors }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'Failed to save Stage 3 details')
+      }
+
+      completeStage(3)
+      setCurrentStage(4)
+      showToast('Stage 3 completed successfully!', 'success')
+    } catch (err: any) {
+      showToast(err.message || 'Failed to save Stage 3 to backend', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -321,10 +431,10 @@ export default function Stage3GuarantorNominee() {
 
       {/* Navigation */}
       <div className="flex gap-3">
-        <Button onClick={() => setCurrentStage(2)} variant="outline">
+        <Button onClick={() => setCurrentStage(2)} variant="outline" disabled={saving}>
           Previous
         </Button>
-        <Button onClick={handleNext}>
+        <Button onClick={handleNext} loading={saving} disabled={saving}>
           Next: Document Upload
         </Button>
       </div>

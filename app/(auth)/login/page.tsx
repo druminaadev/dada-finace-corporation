@@ -38,10 +38,16 @@ export default function LoginPage() {
     const t = setInterval(() => setActiveSlide(s => (s + 1) % SLIDES.length), 4000)
     return () => clearInterval(t)
   }, [])
-  const { login } = useAuthStore()
+  const { login, isAuthenticated, hasHydrated } = useAuthStore()
   const { showToast } = useUIStore()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+
+  useEffect(() => {
+    if (hasHydrated && isAuthenticated) {
+      router.replace('/dashboard')
+    }
+  }, [hasHydrated, isAuthenticated, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

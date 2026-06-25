@@ -19,12 +19,11 @@ export default function AddLoanPage() {
   const { token } = useAuthStore()
   const router = useRouter()
   const [currentStage, setCurrentStage] = useState(1)
-  const goNext = () => { setCurrentStage(s => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const goBack = () => { setCurrentStage(s => s - 1); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
+  const [searchResults, setSearchResults] = useState<{ id: number; name: string; phone: string; aadhaar: string; address: string }[]>([])
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id: number; name: string; phone: string; aadhaar: string; address: string; email?: string } | null>(null)
   const [searching, setSearching] = useState(false)
 
   const [loanData, setLoanData] = useState({
@@ -43,6 +42,15 @@ export default function AddLoanPage() {
   const [agreed, setAgreed] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [submittedLoanNo, setSubmittedLoanNo] = useState('')
+  const [nextLoanNo, setNextLoanNo] = useState('LN001')
+
+  useEffect(() => {
+    import('@/store/appStore').then(m => {
+      const loans = m.useStore.getState().loans
+      const nextId = loans.length ? Math.max(...loans.map((x: { id: number }) => x.id)) + 1 : 1
+      setNextLoanNo(`LN${String(nextId).padStart(3, '0')}`)
+    })
+  }, [currentStage])
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -85,14 +93,14 @@ export default function AddLoanPage() {
       if (!res.ok) throw new Error(data.message)
       setSearchResults(data.data || [])
       if (data.data.length === 0) showToast('No customers found', 'info')
-    } catch (err: any) {
-      showToast(err.message || 'Search failed', 'error')
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Search failed', 'error')
     } finally {
       setSearching(false)
     }
   }
 
-  const selectCustomer = (customer: any) => {
+  const selectCustomer = (customer: { id: number; name: string; phone: string; aadhaar: string; address: string }) => {
     setSelectedCustomer(customer)
     setSearchResults([])
     setSearchQuery('')
@@ -122,21 +130,21 @@ export default function AddLoanPage() {
 
     if (amt > 0 && rate > 0 && tenureMonths > 0) {
       try {
+        let emi: number
         if (loanData.interestType === 'REDUCING') {
           const monthlyRate = rate / 12 / 100
-          const emi = (amt * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) / (Math.pow(1 + monthlyRate, tenureMonths) - 1)
-          setEmiAmount(isNaN(emi) ? 0 : Math.round(emi))
+          emi = (amt * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) / (Math.pow(1 + monthlyRate, tenureMonths) - 1)
         } else {
           const totalInterest = amt * (rate / 100) * (tenureMonths / 12)
-          const emi = (amt + totalInterest) / tenureMonths
-          setEmiAmount(isNaN(emi) ? 0 : Math.round(emi))
+          emi = (amt + totalInterest) / tenureMonths
         }
+        setTimeout(() => setEmiAmount(isNaN(emi) ? 0 : Math.round(emi)), 0)
       } catch (error) {
         console.error('EMI calculation error:', error)
-        setEmiAmount(0)
+        setTimeout(() => setEmiAmount(0), 0)
       }
     } else {
-      setEmiAmount(0)
+      setTimeout(() => setEmiAmount(0), 0)
     }
   }, [loanData.amount, loanData.interestRate, loanData.tenure, loanData.interestType, loanData.tenureType])
 
@@ -385,40 +393,30 @@ export default function AddLoanPage() {
           <Card title="Step 2: Review & Submit">
             <div className="space-y-6">
               {/* Loan ID Display */}
-              {(() => {
-                const { loans } = require('@/store/appStore').useStore.getState()
-                const nextId = loans.length ? Math.max(...loans.map((x: any) => x.id)) + 1 : 1
-                const nextLoanNo = `LN${String(nextId).padStart(3, '0')}`
-                return (
-                  <div className="relative overflow-hidden rounded-2xl p-5 flex items-center justify-between gap-4"
-                    style={{ background: 'linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-light) 100%)', boxShadow: '0 8px 32px rgba(67,118,108,0.28)' }}>
-                    {/* Decorative circles */}
-                    <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-10" style={{ background: 'white' }} />
-                    <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full opacity-10" style={{ background: 'white' }} />
-
-                    <div className="relative flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                        <Hash size={22} color="white" strokeWidth={2.5} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>Loan Application No.</p>
-                        <p className="text-3xl font-black tracking-tight" style={{ color: 'white', letterSpacing: '-0.02em' }}>{nextLoanNo}</p>
-                      </div>
-                    </div>
-
-                    <div className="relative flex flex-col items-end gap-1">
-                      <span className="px-3 py-1 rounded-full text-xs font-bold"
-                        style={{ background: 'rgba(255,255,255,0.18)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}>
-                        PENDING
-                      </span>
-                      <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                        {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
+              <div className="relative overflow-hidden rounded-2xl p-5 flex items-center justify-between gap-4"
+                style={{ background: 'linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-light) 100%)', boxShadow: '0 8px 32px rgba(67,118,108,0.28)' }}>
+                <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-10" style={{ background: 'white' }} />
+                <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full opacity-10" style={{ background: 'white' }} />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.25)' }}>
+                    <Hash size={22} color="white" strokeWidth={2.5} />
                   </div>
-                )
-              })()}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: 'rgba(255,255,255,0.75)' }}>Loan Application No.</p>
+                    <p className="text-3xl font-black tracking-tight" style={{ color: 'white', letterSpacing: '-0.02em' }}>{nextLoanNo}</p>
+                  </div>
+                </div>
+                <div className="relative flex flex-col items-end gap-1">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold"
+                    style={{ background: 'rgba(255,255,255,0.18)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}>
+                    PENDING
+                  </span>
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                    {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-lg" style={{ background: 'var(--accent-tint)' }}>
@@ -517,6 +515,7 @@ export default function AddLoanPage() {
               size="lg"
               onClick={() => {
                 if (currentStage === 2) {
+                  if (!selectedCustomer) { showToast('Please select a customer', 'error'); return }
                   if (!agreed) { showToast('Please agree to terms and conditions', 'error'); return }
                   const submitLoan = async () => {
                     const { addLoan } = await import('@/store/appStore').then(m => ({ addLoan: m.useStore.getState().addLoan }))

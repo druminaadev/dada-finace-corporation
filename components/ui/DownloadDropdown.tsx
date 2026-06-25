@@ -58,7 +58,7 @@ export function DownloadDropdown({ loanId }: { loanId: number }) {
       const rect = btnRef.current.getBoundingClientRect()
       const dropW = 224
       const left = rect.right - dropW < 0 ? rect.left : rect.right - dropW
-      setDropPos({ top: rect.bottom + window.scrollY + 6, left: left + window.scrollX })
+      setDropPos({ top: rect.bottom + 6, left })
     }
   }, [open])
 
@@ -88,7 +88,7 @@ export function DownloadDropdown({ loanId }: { loanId: number }) {
     <div
       ref={dropRef}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: dropPos.top,
         left: dropPos.left,
         width: 232,

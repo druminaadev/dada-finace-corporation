@@ -7,6 +7,42 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { COLORS, GRADIENTS } from '@/lib/colors'
 
+const SEARCH_OPTIONS = [
+  { label: 'Dashboard', path: '/dashboard' },
+  { label: 'Customers List', path: '/customers/list' },
+  { label: 'Add Customer', path: '/customers/add' },
+  { label: 'Loans List', path: '/loans/list' },
+  { label: 'Add Loan', path: '/loans/add' },
+  { label: 'Apply Loan', path: '/loans/apply' },
+  { label: 'Loan Approval', path: '/loans/approval' },
+  { label: 'Approved Loans', path: '/loans/approved' },
+  { label: 'Disbursed Loans', path: '/loans/disbursed' },
+  { label: 'Loan Documents', path: '/loans/documents' },
+  { label: 'EMI Calculator', path: '/emi/calculator' },
+  { label: 'EMI Calendar', path: '/emi/calendar' },
+  { label: 'EMI Collection', path: '/emi/collection' },
+  { label: 'Upcoming EMI', path: '/emi/upcoming' },
+  { label: 'Payment Methods', path: '/emi/payment-methods' },
+  { label: 'Employees List', path: '/employees/list' },
+  { label: 'Add Employee', path: '/employees/add' },
+  { label: 'Civil Score', path: '/civil-score' },
+  { label: 'Reports - Portfolio', path: '/reports/portfolio' },
+  { label: 'Reports - Outstanding', path: '/reports/outstanding' },
+  { label: 'Reports - Daily Collection', path: '/reports/daily-collection' },
+  { label: 'Reports - Business Trend', path: '/reports/business-trend' },
+  { label: 'Reports - Branch Performance', path: '/reports/branch-performance' },
+  { label: 'Reports - Employee Performance', path: '/reports/employee-performance' },
+  { label: 'Reports - Transaction History', path: '/reports/transaction-history' },
+  { label: 'Master - Loan Types', path: '/master/loan-types' },
+  { label: 'Master - Banks', path: '/master/banks' },
+  { label: 'Master - Branches', path: '/master/branches' },
+  { label: 'Master - Areas', path: '/master/areas' },
+  { label: 'Master - Cities', path: '/master/cities' },
+  { label: 'Master - States', path: '/master/states' },
+  { label: 'Settings', path: '/settings' },
+  { label: 'Help', path: '/help' },
+]
+
 interface TopbarProps { onMenuToggle: () => void }
 
 export function Topbar({ onMenuToggle }: TopbarProps) {
@@ -19,12 +55,21 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
   const notifRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
 
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  const filteredOptions = searchQuery.trim()
+    ? SEARCH_OPTIONS.filter(o => o.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : []
+
   const unread = notifications.filter(n => !n.read).length
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false)
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false)
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -58,14 +103,39 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
         </button>
 
         {/* Search Bar */}
-        <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl border transition-all" style={{ borderColor: COLORS.borderLight, background: COLORS.bgSecondary, minWidth: '320px' }}>
-          <Search size={16} style={{ color: COLORS.gray }} />
-          <input
-            type="text"
-            placeholder="Search loans, customers..."
-            className="flex-1 bg-transparent outline-none text-sm"
-            style={{ color: COLORS.dark }}
-          />
+        <div className="hidden md:block relative" ref={searchRef} style={{ minWidth: '320px' }}>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all">
+            <Search size={16} style={{ color: COLORS.gray }} />
+            <input
+              type="text"
+              placeholder="Search loans, customers..."
+              className="flex-1 bg-transparent outline-none text-sm"
+              style={{ color: COLORS.dark }}
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true) }}
+              onFocus={() => setSearchOpen(true)}
+            />
+          </div>
+          {searchOpen && filteredOptions.length > 0 && (
+            <div
+              className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-[999]"
+              style={{ background: COLORS.white, border: `1px solid ${COLORS.borderLight}`, boxShadow: COLORS.shadowCard }}
+            >
+              {filteredOptions.map(opt => (
+                <button
+                  key={opt.path}
+                  className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors"
+                  style={{ color: COLORS.dark }}
+                  onMouseEnter={e => (e.currentTarget.style.background = COLORS.bgSecondary)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => { router.push(opt.path); setSearchQuery(''); setSearchOpen(false) }}
+                >
+                  <Search size={13} style={{ color: COLORS.gray }} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

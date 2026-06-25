@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { format, parseISO } from 'date-fns'
 import { AlertTriangle, Clock, DollarSign, Users, Download, Printer, FileSpreadsheet } from 'lucide-react'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { exportCSV, exportExcel, exportPDF, printTable } from '@/lib/exportUtils'
 
 export default function OutstandingDuesPage() {
   const { emis, loans, customers } = useStore()
@@ -40,8 +41,30 @@ export default function OutstandingDuesPage() {
     return { label: 'Moderate', bg: 'rgba(139,92,246,0.12)', color: '#8B5CF6' }
   }
 
+  const handleExport = (formatType: string) => {
+    const dataToExport = grouped.map(g => {
+      const sev = getSeverity(g.daysOverdue)
+      const oldestDueDate = g.emis.sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]?.dueDate
+      return {
+        'Customer': g.customer?.name ?? '—',
+        'Mobile': g.customer?.mobile ?? '—',
+        'Loan No': g.loan?.loanNo ?? '—',
+        'Overdue EMIs': g.emis.length,
+        'Overdue Amount': g.totalOverdue,
+        'Severity': sev.label,
+        'Days Overdue': g.daysOverdue,
+        'Oldest Due Date': oldestDueDate ? format(parseISO(oldestDueDate), 'dd/MM/yyyy') : '—'
+      }
+    })
+    if (formatType === 'csv') exportCSV(dataToExport, 'Outstanding_Dues')
+    else if (formatType === 'excel') exportExcel(dataToExport, 'Outstanding_Dues')
+    else if (formatType === 'pdf') exportPDF(dataToExport, 'Outstanding Dues Report')
+    else if (formatType === 'print') printTable(dataToExport, 'Outstanding Dues Report')
+  }
+
   const exportItems = [
     { label: 'Export as CSV', value: 'csv', icon: FileSpreadsheet },
+    { label: 'Export as Excel', value: 'excel', icon: FileSpreadsheet },
     { label: 'Export as PDF', value: 'pdf', icon: Download },
     { label: 'Print Report', value: 'print', icon: Printer, dividerBefore: true },
   ]
@@ -58,7 +81,7 @@ export default function OutstandingDuesPage() {
             <Dropdown
               trigger={<span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white"><Download size={14} />Export</span>}
               items={exportItems}
-              onSelect={item => item.value === 'print' ? window.print() : alert(`Exporting as ${item.value}`)}
+              onSelect={item => handleExport(String(item.value ?? ''))}
               align="right"
               width={200}
               variant="ghost"

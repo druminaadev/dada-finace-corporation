@@ -4,6 +4,7 @@ import { useStore } from '@/store/appStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Users, TrendingUp, AlertTriangle, UserCheck, Download, Printer, FileSpreadsheet } from 'lucide-react'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { exportCSV, exportExcel, exportPDF, printTable } from '@/lib/exportUtils'
 
 export default function EmployeePerformancePage() {
   const { employees, loans, customers, emis } = useStore()
@@ -30,11 +31,30 @@ export default function EmployeePerformancePage() {
     { label: 'Total Overdue EMIs', value: data.reduce((s, d) => s + d.overdueCount, 0), icon: AlertTriangle, color: 'var(--error)', tint: 'rgba(239,68,68,0.12)' },
   ]
 
-  const rankColors = ['#F59E0B', '#94A3B8', '#CD7F32']
   const rankLabels = ['🥇', '🥈', '🥉']
+
+  const handleExport = (formatType: string) => {
+    const dataToExport = data.map((d, i) => ({
+      'Rank': `#${i + 1}`,
+      'Employee Code': d.emp.code,
+      'Name': d.emp.name,
+      'Role': d.emp.role,
+      'Customers Added': d.customersAdded,
+      'Loans Initiated': d.loans,
+      'Disbursed Amount': d.totalDisbursed,
+      'EMI Collected': d.collected,
+      'Overdue EMIs': d.overdueCount,
+      'Performance Score': Math.round(d.score)
+    }))
+    if (formatType === 'csv') exportCSV(dataToExport, 'Employee_Performance')
+    else if (formatType === 'excel') exportExcel(dataToExport, 'Employee_Performance')
+    else if (formatType === 'pdf') exportPDF(dataToExport, 'Employee Performance Report')
+    else if (formatType === 'print') printTable(dataToExport, 'Employee Performance Report')
+  }
 
   const exportItems = [
     { label: 'Export as CSV', value: 'csv', icon: FileSpreadsheet },
+    { label: 'Export as Excel', value: 'excel', icon: FileSpreadsheet },
     { label: 'Export as PDF', value: 'pdf', icon: Download },
     { label: 'Print Report', value: 'print', icon: Printer, dividerBefore: true },
   ]
@@ -51,7 +71,7 @@ export default function EmployeePerformancePage() {
             <Dropdown
               trigger={<span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white"><Download size={14} />Export</span>}
               items={exportItems}
-              onSelect={item => item.value === 'print' ? window.print() : alert(`Exporting as ${item.value}`)}
+              onSelect={item => handleExport(String(item.value ?? ''))}
               align="right"
               width={200}
               variant="ghost"

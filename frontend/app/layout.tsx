@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ThemeProvider } from 'next-themes'
 import { Inter } from 'next/font/google'
+import { ToastContainer } from '@/components/ui/Toast'
 import './globals.css'
 import './dark-theme.css'
 
@@ -10,16 +11,13 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'NEXZEN — LMS',
-  description: 'Loan Management System',
+  title: 'Dada Finance & Corporation',
+  description: 'Dada Finance & Corporation',
   manifest: '/manifest.json',
   icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/nexzen-icon.png', type: 'image/png' },
-    ],
-    shortcut: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: [{ url: '/LOGO.png', type: 'image/png' }],
+    shortcut: '/LOGO.png',
+    apple: '/LOGO.png',
   },
 }
 
@@ -28,13 +26,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/nexzen-icon.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" href="/LOGO.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/LOGO.png" />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           {children}
+          <ToastContainer />
         </ThemeProvider>
       </body>
     </html>

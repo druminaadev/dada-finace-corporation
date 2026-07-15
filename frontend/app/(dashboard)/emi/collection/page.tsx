@@ -2,7 +2,6 @@
 import { useState, useMemo } from 'react'
 import type React from 'react'
 import { useStore, type EMIInstalment } from '@/store/appStore'
-import { useUIStore } from '@/store/uiStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -64,7 +63,7 @@ function MetricTile({
 
 export default function EMICollectionPage() {
   const { loans, customers, employees, emis, generateEMIs, collectEMI } = useStore()
-  const { showToast } = useUIStore()
+  
   const [selectedLoan, setSelectedLoan] = useState('')
   const [collectModal, setCollectModal] = useState<EMIInstalment | null>(null)
   const [form, setForm] = useState({ paidAmount: '', paymentMode: 'Cash', collectedBy: '', paidDate: new Date().toISOString().split('T')[0] })
@@ -86,13 +85,11 @@ export default function EMICollectionPage() {
   function handleGenerate() {
     if (!selectedLoan) return
     generateEMIs(Number(selectedLoan))
-    showToast('EMI schedule generated!', 'success')
   }
 
   function handleCollect() {
     if (!collectModal) return
     collectEMI(collectModal.id, Number(form.paidAmount), form.paymentMode, Number(form.collectedBy), form.paidDate)
-    showToast('EMI collected successfully!', 'success')
     setCollectModal(null)
   }
 

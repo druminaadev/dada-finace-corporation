@@ -1,11 +1,12 @@
-const prisma = require('../../config/database');
-const AppError = require('../../utils/appError');
+import prisma from '../../config/database.js';
+import AppError from '../../utils/appError.js';
 
-// Generic CRUD factory for simple master entities
 function masterService(model) {
   return {
-    async getAll() {
-      return prisma[model].findMany({ orderBy: { createdAt: 'desc' } });
+    async getAll(query = {}) {
+      const where = {};
+      if (query.isActive !== undefined) where.isActive = query.isActive === 'true';
+      return prisma[model].findMany({ where, orderBy: { createdAt: 'desc' } });
     },
     async getById(id) {
       const record = await prisma[model].findUnique({ where: { id } });
@@ -20,19 +21,17 @@ function masterService(model) {
       if (!record) throw new AppError(`${model} not found`, 404);
       return prisma[model].update({ where: { id }, data });
     },
-    async delete(id) {
+    async toggleActive(id) {
       const record = await prisma[model].findUnique({ where: { id } });
       if (!record) throw new AppError(`${model} not found`, 404);
-      await prisma[model].delete({ where: { id } });
+      return prisma[model].update({ where: { id }, data: { isActive: !record.isActive } });
     },
   };
 }
 
-module.exports = {
-  stateService: masterService('state'),
-  cityService: masterService('city'),
-  areaService: masterService('area'),
-  branchService: masterService('branch'),
-  loanTypeService: masterService('loanType'),
-  bankService: masterService('bank'),
-};
+export const stateService = masterService('state');
+export const cityService = masterService('city');
+export const areaService = masterService('area');
+export const branchService = masterService('branch');
+export const loanTypeService = masterService('loanType');
+export const bankService = masterService('bank');

@@ -1,32 +1,38 @@
-const customerService = require('./customer.service');
-const asyncHandler = require('../../utils/asyncHandler');
-const ApiResponse = require('../../utils/apiResponse');
+import customerService from './customer.service.js';
+import asyncHandler from '../../utils/asyncHandler.js';
+import ApiResponse from '../../utils/apiResponse.js';
 
-class CustomerController {
-  create = asyncHandler(async (req, res) => {
-    const customer = await customerService.create(req.body, req.user.id);
-    ApiResponse.success(res, customer, 'Customer created successfully', 201);
-  });
+export const create = asyncHandler(async (req, res) => {
+  const customer = await customerService.create(req.body, req.user.id);
+  ApiResponse.success(res, customer, 'Customer created', 201);
+});
 
-  getAll = asyncHandler(async (req, res) => {
-    const result = await customerService.getAll(req.query);
-    ApiResponse.paginated(res, result.customers, result.pagination, 'Customers fetched successfully');
-  });
+export const getAll = asyncHandler(async (req, res) => {
+  const { customers, pagination } = await customerService.getAll(req.query);
+  ApiResponse.paginated(res, customers, pagination, 'Customers fetched');
+});
 
-  getById = asyncHandler(async (req, res) => {
-    const customer = await customerService.getById(req.params.id);
-    ApiResponse.success(res, customer, 'Customer fetched successfully');
-  });
+export const getById = asyncHandler(async (req, res) => {
+  const customer = await customerService.getById(req.params.id);
+  ApiResponse.success(res, customer, 'Customer fetched');
+});
 
-  update = asyncHandler(async (req, res) => {
-    const customer = await customerService.update(req.params.id, req.body);
-    ApiResponse.success(res, customer, 'Customer updated successfully');
-  });
+export const update = asyncHandler(async (req, res) => {
+  const customer = await customerService.update(req.params.id, req.body, req.user.id);
+  ApiResponse.success(res, customer, 'Customer updated');
+});
 
-  delete = asyncHandler(async (req, res) => {
-    await customerService.delete(req.params.id);
-    ApiResponse.success(res, null, 'Customer deleted successfully');
-  });
-}
+export const deactivate = asyncHandler(async (req, res) => {
+  await customerService.deactivate(req.params.id, req.user.id);
+  ApiResponse.success(res, null, 'Customer deactivated');
+});
 
-module.exports = new CustomerController();
+export const getLoanHistory = asyncHandler(async (req, res) => {
+  const loans = await customerService.getLoanHistory(req.params.id);
+  ApiResponse.success(res, loans, 'Loan history fetched');
+});
+
+export const findOrCreate = asyncHandler(async (req, res) => {
+  const result = await customerService.findOrCreate(req.body, req.user.id);
+  ApiResponse.success(res, result, result.created ? 'Customer created' : 'Existing customer found', result.created ? 201 : 200);
+});

@@ -41,9 +41,9 @@ function calcFlat(p: number, rate: number, months: number): FlatResult {
     return { totalInterest: 0, totalPayable: 0, monthlyPayment: 0, months: 0 }
   }
 
-  const totalInterest = (p * (rate / 100) * months) / 12
-  const totalPayable = p + totalInterest
-  const monthlyPayment = totalPayable / months
+  const totalInterest = Math.round((p * (rate / 100) * months) / 12)
+  const totalPayable = Math.round(p + totalInterest)
+  const monthlyPayment = Math.round(totalPayable / months)
   return { totalInterest, totalPayable, monthlyPayment, months }
 }
 
@@ -53,9 +53,9 @@ function calcEMI(p: number, rate: number, months: number): EMIResult {
   }
 
   const r = rate / 100 / 12
-  const emi = r === 0 ? p / months : (p * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1)
-  const totalPayable = emi * months
-  const totalInterest = totalPayable - p
+  const emi = Math.round(r === 0 ? p / months : (p * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1))
+  const totalPayable = Math.round(emi * months)
+  const totalInterest = Math.round(totalPayable - p)
 
   // amortisation schedule
   let balance = p

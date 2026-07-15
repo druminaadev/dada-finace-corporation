@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { LoanSearchPicker } from '@/components/emi/LoanSearchPicker'
-import { useUIStore } from '@/store/uiStore'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns'
 import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2, Clock, Wallet } from 'lucide-react'
 
@@ -27,7 +26,7 @@ const STATUS_META: Record<EMIInstalment['status'], { label: string; pill: string
 
 export default function EMICalendarPage() {
   const { loans, customers, emis, employees, generateEMIs, collectEMI } = useStore()
-  const { showToast } = useUIStore()
+  
   const [selectedLoan, setSelectedLoan] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [collectModal, setCollectModal] = useState<EMIInstalment | null>(null)
@@ -67,13 +66,11 @@ export default function EMICalendarPage() {
   function handleGenerate() {
     if (!selectedLoan) return
     generateEMIs(Number(selectedLoan))
-    showToast('EMI schedule generated!', 'success')
   }
 
   function handleCollect() {
     if (!collectModal) return
     collectEMI(collectModal.id, Number(form.paidAmount), form.paymentMode, Number(form.collectedBy), form.paidDate)
-    showToast('EMI collected!', 'success')
     setCollectModal(null)
   }
 

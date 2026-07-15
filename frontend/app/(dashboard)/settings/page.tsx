@@ -1,16 +1,14 @@
 'use client'
 import { useState } from 'react'
-import { User, Shield, Bell, Settings as SettingsIcon } from 'lucide-react'
+import { User, Shield, Bell } from 'lucide-react'
 import ProfileSettings from '@/components/settings/ProfileSettings'
 import SecuritySettings from '@/components/settings/SecuritySettings'
 import NotificationSettings from '@/components/settings/NotificationSettings'
-import MasterSetupSettings from '@/components/settings/MasterSetupSettings'
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User, description: 'Manage your personal information' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password and authentication' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Manage your alerts' },
-  { id: 'master', label: 'Master Setup', icon: SettingsIcon, description: 'System configuration' },
 ]
 
 export default function SettingsPage() {
@@ -21,7 +19,6 @@ export default function SettingsPage() {
       case 'profile': return <ProfileSettings />
       case 'security': return <SecuritySettings />
       case 'notifications': return <NotificationSettings />
-      case 'master': return <MasterSetupSettings />
       default: return <ProfileSettings />
     }
   }

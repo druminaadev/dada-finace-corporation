@@ -6,7 +6,6 @@ import { useAuthStore } from '@/store/authStore'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { Footer } from '@/components/layout/Footer'
-import { ToastContainer } from '@/components/ui/Toast'
 import { Chatbot } from '@/components/ui/Chatbot'
 import { migrateStripPhotos } from '@/lib/storageUtils'
 
@@ -65,7 +64,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      <ToastContainer />
       <Chatbot />
     </>
   )

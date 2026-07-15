@@ -1,3 +1,8 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// schema.prisma — Dada Finance Corporation
+// Production-grade schema with full audit trail, soft deletes, and security
+// ─────────────────────────────────────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,15 +12,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Master Data ────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 1 — MASTER / LOOKUP DATA
+// ═════════════════════════════════════════════════════════════════════════════
 
 model State {
   id        String   @id @default(uuid())
   name      String   @unique
+  code      String   @unique          // e.g. "MH", "GJ"
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   cities    City[]
 
+  @@index([isActive])
   @@map("states")
 }
 
@@ -23,12 +33,15 @@ model City {
   id        String   @id @default(uuid())
   name      String
   stateId   String
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Restrict)
   areas     Area[]
 
   @@unique([name, stateId])
+  @@index([stateId])
+  @@index([isActive])
   @@map("cities")
 }
 
@@ -36,219 +49,439 @@ model Area {
   id        String   @id @default(uuid())
   name      String
   cityId    String
+  pincode   String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Restrict)
 
   @@unique([name, cityId])
+  @@index([cityId])
+  @@index([pincode])
   @@map("areas")
 }
 
 model Branch {
   id        String   @id @default(uuid())
   name      String   @unique
+  code      String   @unique          // e.g. "MUM-01"
   address   String?
+  phone     String?
+  email     String?
+  managerId String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isActive])
   @@map("branches")
 }
 
 model LoanType {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  name            String   @unique
+  description     String?
+  minAmount       Float    @default(1000)
+  maxAmount       Float    @default(10000000)
+  minInterestRate Float    @default(1)
+  maxInterestRate Float    @default(36)
+  minTenure       Int      @default(1)
+  maxTenure       Int      @default(360)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
+  @@index([isActive])
   @@map("loan_types")
 }
 
 model Bank {
   id        String   @id @default(uuid())
   name      String   @unique
+  ifscPrefix String? // First 4 chars of IFSC
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([isActive])
   @@map("banks")
 }
 
-// ─── Users ──────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 2 — USERS & AUTHENTICATION
+// ═════════════════════════════════════════════════════════════════════════════
 
 model User {
-  id               String        @id @default(uuid())
-  email            String        @unique
-  password         String
-  name             String
-  phone            String?
-  role             Role          @default(USER)
-  refreshToken     String?
-  isActive         Boolean       @default(true)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  createdCustomers Customer[]    @relation("CreatedBy")
-  approvedLoans    Loan[]        @relation("ApprovedBy")
-  createdLoans     Loan[]        @relation("CreatedBy")
-  loanDrafts       LoanDraft[]
-  statusHistory    LoanStatusHistory[]
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String                          // bcrypt hash — never plain text
+  name          String
+  phone         String?   @unique
+  role          Role      @default(EMPLOYEE)
+  branchId      String?                         // Branch assignment
+  employeeCode  String?   @unique               // e.g. "EMP-001"
 
+  // Auth security fields
+  refreshToken  String?                         // Hashed refresh token
+  isActive      Boolean   @default(true)
+  loginAttempts Int       @default(0)
+  lockedUntil   DateTime?
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+  passwordChangedAt DateTime?
+
+  // Soft delete
+  deletedAt     DateTime?
+  deletedBy     String?
+
+  // Audit
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+
+  // Relations
+  createdCustomers  Customer[]         @relation("CustomerCreatedBy")
+  updatedCustomers  Customer[]         @relation("CustomerUpdatedBy")
+  createdLoans      Loan[]             @relation("LoanCreatedBy")
+  approvedLoans     Loan[]             @relation("LoanApprovedBy")
+  loanDrafts        LoanDraft[]
+  statusHistory     LoanStatusHistory[]
+  auditLogs         AuditLog[]
+  sessions          UserSession[]
+  notifications     Notification[]
+  creditScoreRequests CreditScoreRequest[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@index([branchId])
+  @@index([deletedAt])
   @@map("users")
 }
 
-// ─── OTP Verification Logs ──────────────────────────────────────────────────
+model UserSession {
+  id           String    @id @default(uuid())
+  userId       String
+  refreshToken String    @unique               // Hashed token stored here
+  ipAddress    String?
+  userAgent    String?
+  isRevoked    Boolean   @default(false)
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRevoked])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// ─── OTP Verification Logs ───────────────────────────────────────────────────
 
 model OtpLog {
-  id          String    @id @default(uuid())
-  aadhaar     String
-  phone       String
-  otp         String
-  verified    Boolean   @default(false)
-  attempts    Int       @default(0)
-  expiresAt   DateTime
-  verifiedAt  DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  aadhaar    String                            // Masked in application layer
+  phone      String
+  otpHash    String                            // bcrypt hash of OTP — never plain
+  verified   Boolean   @default(false)
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
 
+  @@index([aadhaar])
+  @@index([expiresAt])
+  @@index([verified])
   @@map("otp_logs")
 }
 
-// ─── Customers ──────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 3 — CUSTOMERS
+// ═════════════════════════════════════════════════════════════════════════════
 
 model Customer {
   id            String    @id @default(uuid())
-  appNo         String    @unique
+  appNo         String    @unique              // e.g. "CUST-000001"
+
+  // Personal
   name          String
   fatherName    String?
   motherName    String?
+  spouseName    String?
+  dob           DateTime?
+  age           Int?
+  gender        Gender?
+  maritalStatus MaritalStatus?
+  bloodGroup    String?
+  religion      String?
+  caste         String?
+  nationality   String?   @default("Indian")
+
+  // Contact
   email         String?   @unique
   phone         String    @unique
   altPhone      String?
+  whatsapp      String?
+
+  // Address
   address       String?
+  landmark      String?
+  pincode       String?
+  stateId       String?
+  cityId        String?
+  areaId        String?
+
+  // Permanent address (if different)
+  permAddress   String?
+  permPincode   String?
+  permStateId   String?
+  permCityId    String?
+
+  // Identity documents (encrypted at application layer)
+  aadhaar       String?   @unique              // Last 4 digits stored or encrypted
+  pan           String?   @unique
+  voterId       String?
+  drivingLicense String?
+  passportNo    String?
+
+  // Employment
   occupation    String?
+  employerName  String?
+  jobAddress    String?
   income        Float?
   businessInfo  String?
-  aadhaar       String?   @unique
-  pan           String?   @unique
-  dob           DateTime?
-  age           Int?
-  gender        String?
-  maritalStatus String?
-  bloodGroup    String?
-  jobAddress    String?
-  photoPath     String?
-  // Bank details
+  businessType  String?
+
+  // Bank details (encrypted at application layer)
   bankAccountNo   String?
   bankHolderName  String?
   bankName        String?
   bankBranch      String?
   bankIfsc        String?
-  // Location
-  stateId       String?
-  cityId        String?
-  areaId        String?
+  bankAccountType String?
+
+  // Civil score
+  civilScore      Int?
+  civilScoreDate  DateTime?
+
+  // Photo
+  photoPath     String?
+
+  // Assignment
   branchId      String?
   employeeId    String?
+
+  // Status
   isActive      Boolean   @default(true)
+  kycVerified   Boolean   @default(false)
+  kycVerifiedAt DateTime?
+  kycVerifiedBy String?
+
+  // Soft delete
+  deletedAt     DateTime?
+  deletedBy     String?
+
+  // Audit
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   createdBy     String
-  creator       User      @relation("CreatedBy", fields: [createdBy], references: [id])
+  updatedBy     String?
+
+  // Relations
+  creator       User      @relation("CustomerCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater       User?     @relation("CustomerUpdatedBy", fields: [updatedBy], references: [id])
   loans         Loan[]
   nominees      Nominee[]
   guarantors    Guarantor[]
   loanDrafts    LoanDraft[]
+  documents     Document[]
+  auditLogs     AuditLog[]
+  creditScoreRequests CreditScoreRequest[]
 
+  @@index([phone])
+  @@index([email])
+  @@index([aadhaar])
+  @@index([pan])
+  @@index([appNo])
+  @@index([branchId])
+  @@index([employeeId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([createdAt])
   @@map("customers")
 }
 
-// ─── Loan Draft (5-stage application in progress) ───────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 4 — LOAN APPLICATION (DRAFT WORKFLOW)
+// ═════════════════════════════════════════════════════════════════════════════
 
 model LoanDraft {
   id           String          @id @default(uuid())
+  draftNo      String          @unique         // e.g. "DRAFT-000001"
   customerId   String?
   createdBy    String
-  currentStage Int             @default(1)
+  currentStage Int             @default(1)     // 1–5
   status       LoanDraftStatus @default(DRAFT)
-  // Stage data stored as JSON blobs
-  stage1Data   Json?           // Aadhaar OTP result + auto-filled info
-  stage2Data   Json?           // Customer details + loan details
+
+  // Stage data as JSON blobs
+  stage1Data   Json?           // Aadhaar OTP + auto-filled info
+  stage2Data   Json?           // Customer + loan details
   stage3Data   Json?           // Nominees + guarantors
-  stage4Data   Json?           // Document upload metadata
-  stage5Data   Json?           // Final confirmation data
-  // Completion flags
+  stage4Data   Json?           // Document metadata
+  stage5Data   Json?           // Final confirmation
+
+  // Stage completion flags
   stage1Done   Boolean         @default(false)
   stage2Done   Boolean         @default(false)
   stage3Done   Boolean         @default(false)
   stage4Done   Boolean         @default(false)
+  stage5Done   Boolean         @default(false)
+
   submittedAt  DateTime?
+  expiresAt    DateTime?                       // Draft auto-expires after 7 days
+
+  // Linked loan after submission
   loanId       String?         @unique
+
+  // Soft delete
+  deletedAt    DateTime?
+
+  // Audit
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-  creator      User            @relation(fields: [createdBy], references: [id])
+
+  // Relations
+  creator      User            @relation(fields: [createdBy], references: [id], onDelete: Restrict)
   customer     Customer?       @relation(fields: [customerId], references: [id])
   loan         Loan?           @relation(fields: [loanId], references: [id])
+  documents    Document[]
 
+  @@index([customerId])
+  @@index([createdBy])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([deletedAt])
   @@map("loan_drafts")
 }
 
-// ─── Loans ──────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 5 — LOANS
+// ═════════════════════════════════════════════════════════════════════════════
 
 model Loan {
   id              String        @id @default(uuid())
-  loanNo          String        @unique
+  loanNo          String        @unique         // e.g. "LOAN-2024-000001"
   customerId      String
+  loanTypeId      String?
   loanCategory    LoanCategory  @default(PERSONAL)
+  interestType    InterestType  @default(FLAT)
+
+  // Financials
   amount          Float
   interestRate    Float
-  interestType    InterestType  @default(FLAT)
-  tenure          Int
+  tenure          Int                           // months
   emiAmount       Float
   totalAmount     Float
   processingFee   Float         @default(0)
+  insuranceAmount Float         @default(0)
+  stampDuty       Float         @default(0)
+  netDisbursement Float?                        // amount - fees
+
+  // Status
   status          LoanStatus    @default(DRAFT)
   purpose         String?
   notes           String?
-  // Security deposit
+
+  // Security / Collateral
   securityType    String?
+  securityDesc    String?
+  securityValue   Float?
   securityData    Json?
-  // Receiver
+
+  // Disbursement
+  receiverName    String?
   receiverMobile  String?
+  receiverBank    String?
+  receiverIfsc    String?
+  receiverAccount String?
+  disbursementMode PaymentMode?
+
   // Approval trail
+  submittedAt     DateTime?
+  reviewedBy      String?
+  reviewedAt      DateTime?
   approvedBy      String?
   approvedAt      DateTime?
   rejectionReason String?
   disbursedAt     DateTime?
+  closedAt        DateTime?
+  defaultedAt     DateTime?
+
+  // Renewal link
+  previousLoanId  String?
+  previousLoan    Loan?         @relation("LoanRenewals", fields: [previousLoanId], references: [id])
+  renewals        Loan[]        @relation("LoanRenewals")
+
+  // Soft delete
+  deletedAt       DateTime?
+  deletedBy       String?
+
+  // Audit
   createdBy       String
+  updatedBy       String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  // Relations
+  creator         User          @relation("LoanCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  approver        User?         @relation("LoanApprovedBy", fields: [approvedBy], references: [id])
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
   emiSchedules    EMISchedule[]
   guarantors      Guarantor[]
   nominees        Nominee[]
   documents       Document[]
   statusHistory   LoanStatusHistory[]
-  approver        User?         @relation("ApprovedBy", fields: [approvedBy], references: [id])
-  creator         User          @relation("CreatedBy", fields: [createdBy], references: [id])
-  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
   draft           LoanDraft?
+  auditLogs       AuditLog[]
 
+  @@index([customerId])
+  @@index([status])
+  @@index([loanCategory])
+  @@index([createdBy])
+  @@index([approvedBy])
+  @@index([createdAt])
+  @@index([disbursedAt])
+  @@index([deletedAt])
+  @@index([previousLoanId])
   @@map("loans")
 }
 
-// ─── Loan Status History (audit trail) ──────────────────────────────────────
+// ─── Loan Status History (immutable audit trail) ─────────────────────────────
 
 model LoanStatusHistory {
-  id        String     @id @default(uuid())
-  loanId    String
-  status    LoanStatus
-  note      String?
-  changedBy String
-  createdAt DateTime   @default(now())
-  loan      Loan       @relation(fields: [loanId], references: [id], onDelete: Cascade)
-  user      User       @relation(fields: [changedBy], references: [id])
+  id         String     @id @default(uuid())
+  loanId     String
+  fromStatus LoanStatus?
+  toStatus   LoanStatus
+  note       String?
+  changedBy  String
+  ipAddress  String?
+  createdAt  DateTime   @default(now())
 
+  loan       Loan       @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [changedBy], references: [id], onDelete: Restrict)
+
+  @@index([loanId])
+  @@index([changedBy])
+  @@index([createdAt])
   @@map("loan_status_history")
 }
 
-// ─── EMI Schedules ──────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 6 — EMI & PAYMENTS
+// ═════════════════════════════════════════════════════════════════════════════
 
 model EMISchedule {
   id          String       @id @default(uuid())
@@ -258,19 +491,56 @@ model EMISchedule {
   amount      Float
   principal   Float
   interest    Float
+  balance     Float        @default(0)         // Outstanding balance after this EMI
   status      EMIStatus    @default(PENDING)
   paidDate    DateTime?
   paidAmount  Float?
   paymentMode PaymentMode?
-  lateFee     Float?       @default(0)
+  lateFee     Float        @default(0)
+  penaltyFee  Float        @default(0)
+  waivedAmount Float       @default(0)
+  waivedBy    String?
+  waivedAt    DateTime?
+  waivedNote  String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
   loan        Loan         @relation(fields: [loanId], references: [id], onDelete: Cascade)
   payments    Payment[]
   smsReminder SmsReminder?
 
   @@unique([loanId, emiNumber])
+  @@index([loanId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([status, dueDate])                   // Composite for overdue queries
   @@map("emi_schedules")
+}
+
+model Payment {
+  id              String      @id @default(uuid())
+  emiId           String
+  amount          Float
+  paymentMode     PaymentMode
+  transactionId   String?     @unique          // External transaction reference
+  receiptNo       String?     @unique          // Internal receipt number
+  collectedBy     String?                      // Employee who collected
+  remarks         String?
+  isReversed      Boolean     @default(false)
+  reversedAt      DateTime?
+  reversedBy      String?
+  reversalReason  String?
+  paidAt          DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  emi             EMISchedule @relation(fields: [emiId], references: [id], onDelete: Restrict)
+
+  @@index([emiId])
+  @@index([paymentMode])
+  @@index([paidAt])
+  @@index([isReversed])
+  @@map("payments")
 }
 
 model SmsReminder {
@@ -278,57 +548,61 @@ model SmsReminder {
   emiId         String      @unique
   phone         String
   message       String
-  status        String      @default("PENDING")
+  status        SmsStatus   @default(PENDING)
   sentAt        DateTime?
   failureReason String?
+  retryCount    Int         @default(0)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
   emi           EMISchedule @relation(fields: [emiId], references: [id], onDelete: Cascade)
 
+  @@index([status])
+  @@index([sentAt])
   @@map("sms_reminders")
 }
 
-model Payment {
-  id            String      @id @default(uuid())
-  emiId         String
-  amount        Float
-  paymentMode   PaymentMode
-  transactionId String?
-  remarks       String?
-  paidAt        DateTime    @default(now())
-  createdAt     DateTime    @default(now())
-  emi           EMISchedule @relation(fields: [emiId], references: [id], onDelete: Cascade)
-
-  @@map("payments")
-}
-
-// ─── Guarantors ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 7 — GUARANTORS & NOMINEES
+// ═════════════════════════════════════════════════════════════════════════════
 
 model Guarantor {
   id           String    @id @default(uuid())
   loanId       String?
   customerId   String?
-  slot         Int       @default(1)
+  slot         Int       @default(1)           // 1 or 2
   name         String
   phone        String
   email        String?
   address      String?
   relationship String?
-  aadhaar      String?
+  aadhaar      String?                         // Encrypted at app layer
   pan          String?
   occupation   String?
   income       Float?
   photoPath    String?
   documentPath String?
+  isVerified   Boolean   @default(false)
+  verifiedAt   DateTime?
+  verifiedBy   String?
+
+  // Soft delete
+  deletedAt    DateTime?
+
+  // Audit
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  createdBy    String?
+
   loan         Loan?     @relation(fields: [loanId], references: [id], onDelete: Cascade)
   customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([loanId])
+  @@index([customerId])
+  @@index([phone])
+  @@index([deletedAt])
   @@map("guarantors")
 }
-
-// ─── Nominees ───────────────────────────────────────────────────────────────
 
 model Nominee {
   id           String    @id @default(uuid())
@@ -343,46 +617,199 @@ model Nominee {
   occupation   String?
   income       Float?
   dob          DateTime?
+  sharePercent Float?    @default(100)         // % share of claim
   photoPath    String?
   documentPath String?
+
+  // Soft delete
+  deletedAt    DateTime?
+
+  // Audit
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  createdBy    String?
+
   loan         Loan?     @relation(fields: [loanId], references: [id], onDelete: Cascade)
   customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([loanId])
+  @@index([customerId])
+  @@index([deletedAt])
   @@map("nominees")
 }
 
-// ─── Documents ──────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 8 — DOCUMENTS
+// ═════════════════════════════════════════════════════════════════════════════
 
 model Document {
   id           String       @id @default(uuid())
   loanId       String?
-  entityType   String
+  customerId   String?
+  draftId      String?
+  entityType   String                          // CUSTOMER | LOAN | GUARANTOR | NOMINEE | DRAFT
   entityId     String
   documentType DocumentType
   category     String?
-  fileName     String
-  filePath     String
+  fileName     String                          // UUID filename on disk
+  originalName String?                         // Stored for display only — never used for file ops
+  filePath     String                          // Absolute server path
   fileSize     Int
   mimeType     String
-  uploadedAt   DateTime     @default(now())
-  loan         Loan?        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  checksum     String?                         // SHA-256 of file for integrity check
+  isVerified   Boolean      @default(false)
+  verifiedAt   DateTime?
+  verifiedBy   String?
 
+  // Soft delete
+  deletedAt    DateTime?
+  deletedBy    String?
+
+  uploadedAt   DateTime     @default(now())
+  uploadedBy   String?
+
+  loan         Loan?        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  draft        LoanDraft?   @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([loanId])
+  @@index([customerId])
+  @@index([draftId])
+  @@index([documentType])
+  @@index([deletedAt])
   @@map("documents")
 }
 
-// ─── Enums ──────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 9 — AUDIT LOG (IMMUTABLE)
+// ═════════════════════════════════════════════════════════════════════════════
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  customerId  String?
+  loanId      String?
+  action      String                           // CREATE | UPDATE | DELETE | LOGIN | LOGOUT | etc.
+  entity      String                           // Table/model name
+  entityId    String?
+  oldValues   Json?                            // Snapshot before change
+  newValues   Json?                            // Snapshot after change
+  ipAddress   String?
+  userAgent   String?
+  requestId   String?
+  createdAt   DateTime @default(now())
+
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  loan        Loan?     @relation(fields: [loanId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([loanId])
+  @@index([customerId])
+  @@map("audit_logs")
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PHASE 10 — NOTIFICATIONS, CREDIT SCORES, SETTINGS
+// ═════════════════════════════════════════════════════════════════════════════
+
+model Notification {
+  id          String    @id @default(uuid())
+  userId      String?                           // Recipient user (for IN_APP)
+  channel     String                            // EMAIL | SMS | WHATSAPP | IN_APP
+  templateKey String
+  recipient   String                            // email address or phone number
+  subject     String?
+  body        String
+  status      String    @default("PENDING")     // PENDING | SENT | FAILED
+  sentAt      DateTime?
+  readAt      DateTime?                         // For IN_APP
+  failureReason String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model CreditScoreRequest {
+  id            String    @id @default(uuid())
+  customerId    String
+  requestedBy   String
+  provider      String    @default("mock")
+  consentGiven  Boolean   @default(false)
+  consentAt     DateTime?
+  status        String    @default("PENDING")   // PENDING | SUCCESS | FAILED
+  score         Int?
+  bureau        String?
+  reportId      String?                         // External report reference
+  reportDate    DateTime?
+  reportSummary Json?                           // Masked summary only — no raw PII
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  requester     User      @relation(fields: [requestedBy], references: [id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@index([requestedBy])
+  @@index([createdAt])
+  @@map("credit_score_requests")
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@map("system_settings")
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ENUMS
+// ═════════════════════════════════════════════════════════════════════════════
 
 enum Role {
   ADMIN
+  MANAGER
   EMPLOYEE
   USER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  SEPARATED
 }
 
 enum LoanDraftStatus {
   DRAFT
   SUBMITTED
+  EXPIRED
+  CANCELLED
 }
 
 enum LoanStatus {
@@ -394,12 +821,18 @@ enum LoanStatus {
   ACTIVE
   CLOSED
   DEFAULTED
+  WRITTEN_OFF
+  CANCELLED
 }
 
 enum LoanCategory {
   GOLD
   PERSONAL
   VEHICLE
+  BUSINESS
+  EDUCATION
+  HOME
+  AGRICULTURE
 }
 
 enum InterestType {
@@ -412,6 +845,7 @@ enum EMIStatus {
   PAID
   OVERDUE
   PARTIAL
+  WAIVED
 }
 
 enum PaymentMode {
@@ -420,6 +854,10 @@ enum PaymentMode {
   BANK_TRANSFER
   UPI
   CHEQUE
+  NEFT
+  RTGS
+  IMPS
+  DD
 }
 
 enum DocumentType {
@@ -433,5 +871,17 @@ enum DocumentType {
   INSURANCE
   VEHICLE_IMAGE
   INVOICE
+  SALARY_SLIP
+  ITR
+  FORM_16
+  PROPERTY_PAPER
+  AGREEMENT
   OTHER
+}
+
+enum SmsStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
 }

@@ -1,27 +1,51 @@
-const reportService = require('./report.service');
-const asyncHandler = require('../../utils/asyncHandler');
-const ApiResponse = require('../../utils/apiResponse');
+import reportService from './report.service.js';
+import asyncHandler from '../../utils/asyncHandler.js';
+import ApiResponse from '../../utils/apiResponse.js';
 
-class ReportController {
-  getDashboard = asyncHandler(async (req, res) => {
-    const dashboard = await reportService.getDashboard();
-    ApiResponse.success(res, dashboard, 'Dashboard data fetched successfully');
-  });
+const getDashboard = asyncHandler(async (_req, res) => {
+  ApiResponse.success(res, await reportService.getDashboard(), 'Dashboard data fetched');
+});
 
-  getLoanReport = asyncHandler(async (req, res) => {
-    const report = await reportService.getLoanReport(req.query);
-    ApiResponse.success(res, report, 'Loan report fetched successfully');
-  });
+const getLoanReport = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getLoanReport(req.query), 'Loan report fetched');
+});
 
-  getCollectionReport = asyncHandler(async (req, res) => {
-    const report = await reportService.getCollectionReport(req.query);
-    ApiResponse.success(res, report, 'Collection report fetched successfully');
-  });
+const getCollectionReport = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getCollectionReport(req.query), 'Collection report fetched');
+});
 
-  getOverdueReport = asyncHandler(async (req, res) => {
-    const report = await reportService.getOverdueReport();
-    ApiResponse.success(res, report, 'Overdue report fetched successfully');
-  });
-}
+const getOverdueReport = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getOverdueReport(req.query), 'Overdue report fetched');
+});
 
-module.exports = new ReportController();
+const getDisbursementReport = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getDisbursementReport(req.query), 'Disbursement report fetched');
+});
+
+const getAgingReport = asyncHandler(async (_req, res) => {
+  ApiResponse.success(res, await reportService.getAgingReport(), 'Aging report fetched');
+});
+
+const getBranchPerformance = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getBranchPerformance(req.query), 'Branch performance fetched');
+});
+
+const getEmployeePerformance = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getEmployeePerformance(req.query), 'Employee performance fetched');
+});
+
+const getCashReconciliation = asyncHandler(async (req, res) => {
+  ApiResponse.success(res, await reportService.getCashReconciliation(req.query), 'Cash reconciliation fetched');
+});
+
+export default {
+  getDashboard,
+  getLoanReport,
+  getCollectionReport,
+  getOverdueReport,
+  getDisbursementReport,
+  getAgingReport,
+  getBranchPerformance,
+  getEmployeePerformance,
+  getCashReconciliation,
+};

@@ -1,45 +1,30 @@
-const config = require('../../config/env');
-const Logger = require('../../utils/logger');
-const reminderService = require('./reminder.service');
+import config from '../../config/env.js';
+import { logger } from '../../utils/logger.js';
+import reminderService from './reminder.service.js';
 
-let intervalId;
+let intervalId = null;
 
 const runReminderJob = async () => {
   try {
     const result = await reminderService.sendUpcomingEmiReminders();
-    Logger.info('EMI SMS reminder job completed', {
-      total: result.total,
-      daysAhead: result.window.daysAhead,
-    });
+    logger.info({ total: result.total, daysAhead: result.window.daysAhead }, 'EMI SMS reminder job completed');
   } catch (error) {
-    Logger.error('EMI SMS reminder job failed', { error: error.message });
+    logger.error({ err: error }, 'EMI SMS reminder job failed');
   }
 };
 
-const startReminderScheduler = () => {
-  if (!config.sms.enabled || !config.sms.schedulerEnabled || intervalId) {
-    return;
-  }
-
+export const startReminderScheduler = () => {
+  if (!config.sms.enabled || !config.sms.schedulerEnabled || intervalId) return;
   runReminderJob();
-
   const intervalMs = config.sms.schedulerIntervalMinutes * 60 * 1000;
   intervalId = setInterval(runReminderJob, intervalMs);
-  Logger.info('EMI SMS reminder scheduler started', {
-    intervalMinutes: config.sms.schedulerIntervalMinutes,
-    daysBeforeDue: config.sms.reminderDaysBefore,
-  });
+  logger.info({ intervalMinutes: config.sms.schedulerIntervalMinutes }, 'EMI SMS reminder scheduler started');
 };
 
-const stopReminderScheduler = () => {
+export const stopReminderScheduler = () => {
   if (intervalId) {
     clearInterval(intervalId);
     intervalId = null;
-    Logger.info('EMI SMS reminder scheduler stopped');
+    logger.info('EMI SMS reminder scheduler stopped');
   }
-};
-
-module.exports = {
-  startReminderScheduler,
-  stopReminderScheduler,
 };

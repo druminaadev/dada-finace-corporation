@@ -9,13 +9,12 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useStore, type Employee } from '@/store/appStore'
-import { useUIStore } from '@/store/uiStore'
 
 const ROLES = ['Loan Officer', 'Senior Officer', 'Branch Manager', 'Accountant', 'Field Agent']
 
 export default function EmployeeListPage() {
   const { employees, branches, updateEmployee, deleteEmployee } = useStore()
-  const { showToast } = useUIStore()
+  
   const router = useRouter()
   const [editModal, setEditModal] = useState(false)
   const [editing, setEditing] = useState<Employee | null>(null)
@@ -35,14 +34,11 @@ export default function EmployeeListPage() {
   const save = () => {
     if (!editing) return
     updateEmployee(editing.id, { ...form, branchId: Number(form.branchId) })
-    showToast('Employee updated', 'success')
     setEditModal(false)
   }
 
   const handleFile = (file: File | null | undefined) => {
     if (!file) return
-    if (!file.type.startsWith('image/')) { showToast('Please select an image file', 'error'); return }
-    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB', 'error'); return }
     setEmployeePhoto(file)
     setPhotoConfirmed(false)
   }
@@ -86,7 +82,6 @@ export default function EmployeeListPage() {
                 <button
                   onClick={() => {
                     deleteEmployee((row as unknown as Employee).id)
-                    showToast('Employee deleted', 'warning')
                   }}
                   className="p-1.5 rounded-lg cursor-pointer transition-colors"
                   style={{ color: 'var(--error)' }}
@@ -198,7 +193,6 @@ export default function EmployeeListPage() {
                   {!photoConfirmed && (
                     <button
                       type="button"
-                      onClick={() => { setPhotoConfirmed(true); showToast('Photo confirmed!', 'success') }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all"
                       style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.35)' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(16,185,129,0.22)')}

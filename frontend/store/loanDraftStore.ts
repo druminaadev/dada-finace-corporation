@@ -120,6 +120,7 @@ export interface LoanDraftStore {
   submitting: boolean
   submitted: boolean
   submittedLoanId: string | null
+  aadhaarSkipped: boolean
 
   // Actions
   setDraftId: (id: string) => void
@@ -132,6 +133,7 @@ export interface LoanDraftStore {
   setOtpState: (state: Partial<Pick<LoanDraftStore, 'otpSent' | 'otpVerifying' | 'otpError' | 'maskedPhone' | 'devOtp'>>) => void
   setSubmitting: (v: boolean) => void
   setSubmitted: (loanId: string) => void
+  setAadhaarSkipped: (skipped: boolean) => void
   canAccessStage: (stage: number) => boolean
   resetDraft: () => void
 }
@@ -160,6 +162,7 @@ const initialState = {
   submitting: false,
   submitted: false,
   submittedLoanId: null,
+  aadhaarSkipped: false,
 }
 
 export const useLoanDraftStore = create<LoanDraftStore>()(
@@ -230,6 +233,8 @@ export const useLoanDraftStore = create<LoanDraftStore>()(
 
       setSubmitted: (loanId) => set({ submitted: true, submittedLoanId: loanId, submitting: false }),
 
+      setAadhaarSkipped: (skipped) => set({ aadhaarSkipped: skipped }),
+
       canAccessStage: (stage) => {
         const s = get()
         if (stage === 1) return true
@@ -242,6 +247,6 @@ export const useLoanDraftStore = create<LoanDraftStore>()(
 
       resetDraft: () => set({ ...initialState } as any),
     }),
-    { name: 'nexzen-loan-draft' }
+    { name: 'dada-loan-draft' }
   )
 )

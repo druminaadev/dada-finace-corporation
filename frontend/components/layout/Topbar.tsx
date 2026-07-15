@@ -11,7 +11,7 @@ interface TopbarProps { onMenuToggle: () => void }
 
 export function Topbar({ onMenuToggle }: TopbarProps) {
   const { user, logout } = useAuthStore()
-  const { notifications, markAllRead, markOneRead, clearAll, showToast } = useUIStore()
+  const { notifications, markAllRead, markOneRead, clearAll} = useUIStore()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const [notifOpen, setNotifOpen] = useState(false)
@@ -32,7 +32,6 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
 
   const handleLogout = () => {
     logout()
-    showToast('Logged out successfully', 'info')
     router.push('/login')
   }
 
@@ -123,7 +122,6 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
                     <button
                       onClick={() => {
                         markAllRead()
-                        showToast('All marked as read', 'success')
                       }}
                       className="text-[11px] flex items-center gap-1 cursor-pointer font-semibold"
                       style={{ color: COLORS.primary }}
@@ -134,7 +132,6 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
                   <button
                     onClick={() => {
                       clearAll()
-                      showToast('Notifications cleared', 'info')
                     }}
                     className="p-1 cursor-pointer rounded transition-colors"
                     style={{ color: COLORS.gray }}

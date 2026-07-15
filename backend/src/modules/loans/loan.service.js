@@ -1,178 +1,202 @@
-const prisma = require('../../config/database');
-const AppError = require('../../utils/appError');
-const EMICalculator = require('../../utils/emiCalculator');
+import prisma from '../../config/database.js';
+import AppError from '../../utils/appError.js';
+import { paginate, paginationMeta } from '../../utils/pagination.js';
+import { generateLoanNo } from '../../utils/idGenerator.js';
+import { calcReducingEMI, calcFlatEMI, generateReducingSchedule, generateFlatSchedule } from '../../utils/emiCalculator.js';
+
+// Valid state transitions
+const TRANSITIONS = {
+  DRAFT: ['NEW', 'CANCELLED'],
+  NEW: ['PENDING_APPROVAL', 'CANCELLED'],
+  PENDING_APPROVAL: ['APPROVED', 'REJECTED', 'NEW'],
+  APPROVED: ['DISBURSEMENT_PENDING', 'REJECTED'],
+  DISBURSEMENT_PENDING: ['DISBURSED'],
+  DISBURSED: ['ACTIVE'],
+  ACTIVE: ['OVERDUE', 'COMPLETED', 'WRITTEN_OFF'],
+  OVERDUE: ['ACTIVE', 'COMPLETED', 'WRITTEN_OFF'],
+  REJECTED: [],
+  COMPLETED: ['CLOSED'],
+  CLOSED: [],
+  CANCELLED: [],
+  WRITTEN_OFF: [],
+};
 
 class LoanService {
   async create(data, userId) {
     const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
     if (!customer) throw new AppError('Customer not found', 404);
 
-    const emiAmount = EMICalculator.calculateEMI(data.amount, data.interestRate, data.tenure);
-    const totalAmount = EMICalculator.calculateTotalAmount(data.amount, data.interestRate, data.tenure);
-    const schedule = EMICalculator.generateSchedule(data.amount, data.interestRate, data.tenure, new Date());
+    const loanNo = await generateLoanNo();
+    const emiAmount = data.interestType === 'FLAT'
+      ? calcFlatEMI(data.amount, data.interestRate, data.tenure)
+      : calcReducingEMI(data.amount, data.interestRate, data.tenure);
+
+    const totalInterest = data.interestType === 'FLAT'
+      ? (parseFloat(data.amount) * parseFloat(data.interestRate) / 100 * data.tenure / 12)
+      : (parseFloat(emiAmount) * data.tenure - parseFloat(data.amount));
+
+    const totalAmount = parseFloat(data.amount) + totalInterest;
 
     return prisma.$transaction(async (tx) => {
       const loan = await tx.loan.create({
-        data: { ...data, emiAmount, totalAmount, status: 'PENDING', createdBy: userId },
-      });
-
-      await tx.eMISchedule.createMany({
-        data: schedule.map((e) => ({
-          loanId: loan.id, emiNumber: e.emiNumber, dueDate: e.dueDate,
-          amount: e.amount, principal: e.principal, interest: e.interest,
-        })),
-      });
-
-      return tx.loan.findUnique({
-        where: { id: loan.id },
-        include: {
-          customer: true,
-          creator: { select: { id: true, name: true, email: true } },
-          emiSchedules: { orderBy: { emiNumber: 'asc' } },
+        data: {
+          ...data,
+          loanNo,
+          emiAmount: parseFloat(emiAmount),
+          totalAmount,
+          status: 'DRAFT',
+          createdBy: userId,
         },
       });
+      await tx.loanStatusHistory.create({
+        data: { loanId: loan.id, toStatus: 'DRAFT', changedBy: userId },
+      });
+      return tx.loan.findUnique({ where: { id: loan.id }, include: loanInclude });
     });
   }
 
   async getAll(query) {
-    const { page = 1, limit = 10, status, customerId } = query;
-    const skip = (page - 1) * limit;
-    const where = {};
-    if (status) where.status = status.toUpperCase();
-    if (customerId) where.customerId = customerId;
-
+    const { skip, take, page, limit } = paginate(query);
+    const where = buildLoanWhere(query);
     const [loans, total] = await Promise.all([
-      prisma.loan.findMany({
-        where, skip, take: parseInt(limit),
-        include: {
-          customer: { select: { id: true, name: true, phone: true, email: true } },
-          creator: { select: { id: true, name: true, email: true } },
-          approver: { select: { id: true, name: true, email: true } },
-          _count: { select: { emiSchedules: true, guarantors: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
+      prisma.loan.findMany({ where, skip, take, include: loanListInclude, orderBy: { createdAt: 'desc' } }),
       prisma.loan.count({ where }),
     ]);
-
-    return { loans, pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / limit) } };
+    return { loans, pagination: paginationMeta(total, page, limit) };
   }
 
   async getById(id) {
-    const loan = await prisma.loan.findUnique({
-      where: { id },
-      include: {
-        customer: true,
-        creator: { select: { id: true, name: true, email: true } },
-        approver: { select: { id: true, name: true, email: true } },
-        emiSchedules: { orderBy: { emiNumber: 'asc' } },
-        guarantors: true,
-        documents: true,
-      },
-    });
+    const loan = await prisma.loan.findUnique({ where: { id }, include: loanInclude });
     if (!loan) throw new AppError('Loan not found', 404);
     return loan;
   }
 
-  async update(id, data) {
+  async update(id, data, userId) {
     const loan = await prisma.loan.findUnique({ where: { id } });
     if (!loan) throw new AppError('Loan not found', 404);
-    if (loan.status !== 'PENDING') throw new AppError('Only pending loans can be updated', 400);
+    if (!['DRAFT', 'NEW'].includes(loan.status)) throw new AppError('Loan cannot be edited in current status', 400);
+    return prisma.loan.update({ where: { id }, data: { ...data, updatedBy: userId }, include: loanInclude });
+  }
 
-    const updateData = { ...data };
-    const shouldRegen = data.amount !== undefined || data.interestRate !== undefined || data.tenure !== undefined;
+  async transition(id, toStatus, userId, meta = {}) {
+    const loan = await prisma.loan.findUnique({ where: { id } });
+    if (!loan) throw new AppError('Loan not found', 404);
 
-    if (shouldRegen) {
-      const amount = data.amount ?? loan.amount;
-      const interestRate = data.interestRate ?? loan.interestRate;
-      const tenure = data.tenure ?? loan.tenure;
-      updateData.emiAmount = EMICalculator.calculateEMI(amount, interestRate, tenure);
-      updateData.totalAmount = EMICalculator.calculateTotalAmount(amount, interestRate, tenure);
+    const allowed = TRANSITIONS[loan.status] || [];
+    if (!allowed.includes(toStatus)) {
+      throw new AppError(`Cannot transition from ${loan.status} to ${toStatus}`, 400);
     }
+
+    const updateData = { status: toStatus, updatedBy: userId };
+    if (toStatus === 'PENDING_APPROVAL') updateData.submittedAt = new Date();
+    if (toStatus === 'APPROVED') { updateData.approvedBy = userId; updateData.approvedAt = new Date(); }
+    if (toStatus === 'REJECTED') {
+      if (!meta.reason) throw new AppError('Rejection reason is required', 400);
+      updateData.rejectionReason = meta.reason;
+      updateData.approvedBy = userId;
+      updateData.approvedAt = new Date();
+    }
+    if (toStatus === 'DISBURSED') updateData.disbursedAt = meta.disbursedAt ? new Date(meta.disbursedAt) : new Date();
+    if (toStatus === 'COMPLETED') updateData.closedAt = new Date();
+    if (toStatus === 'CLOSED') updateData.closedAt = new Date();
 
     return prisma.$transaction(async (tx) => {
       const updated = await tx.loan.update({ where: { id }, data: updateData });
-
-      if (shouldRegen) {
-        const schedule = EMICalculator.generateSchedule(updated.amount, updated.interestRate, updated.tenure, updated.createdAt);
-        await tx.eMISchedule.deleteMany({ where: { loanId: id } });
-        await tx.eMISchedule.createMany({
-          data: schedule.map((e) => ({
-            loanId: id, emiNumber: e.emiNumber, dueDate: e.dueDate,
-            amount: e.amount, principal: e.principal, interest: e.interest,
-          })),
-        });
-      }
-
-      return tx.loan.findUnique({ where: { id }, include: { customer: true, emiSchedules: { orderBy: { emiNumber: 'asc' } } } });
+      await tx.loanStatusHistory.create({
+        data: { loanId: id, fromStatus: loan.status, toStatus, note: meta.note || meta.reason, changedBy: userId, ipAddress: meta.ip },
+      });
+      return updated;
     });
   }
 
-  // Stage 2: PENDING → APPROVED
-  async approve(id, userId) {
+  async disburse(id, userId, disbursementData) {
     const loan = await prisma.loan.findUnique({ where: { id } });
     if (!loan) throw new AppError('Loan not found', 404);
-    if (loan.status !== 'PENDING') throw new AppError('Only pending loans can be approved', 400);
+    if (loan.status !== 'DISBURSEMENT_PENDING') throw new AppError('Loan must be in DISBURSEMENT_PENDING status', 400);
 
-    return prisma.loan.update({
-      where: { id },
-      data: { status: 'APPROVED', approvedBy: userId, approvedAt: new Date() },
-      include: { customer: true, approver: { select: { id: true, name: true, email: true } } },
-    });
-  }
-
-  // Stage 3: APPROVED → DISBURSED (maps to ACTIVE in schema)
-  async disburse(id, userId, disbursedAt) {
-    const loan = await prisma.loan.findUnique({ where: { id } });
-    if (!loan) throw new AppError('Loan not found', 404);
-    if (loan.status !== 'APPROVED') throw new AppError('Only approved loans can be disbursed', 400);
-
-    const date = disbursedAt ? new Date(disbursedAt) : new Date();
-    const schedule = EMICalculator.generateSchedule(loan.amount, loan.interestRate, loan.tenure, date);
+    const disbursedAt = disbursementData.disbursedAt ? new Date(disbursementData.disbursedAt) : new Date();
+    const schedule = loan.interestType === 'FLAT'
+      ? generateFlatSchedule({ principal: loan.amount, annualRate: loan.interestRate, tenureMonths: loan.tenure, startDate: disbursedAt })
+      : generateReducingSchedule({ principal: loan.amount, annualRate: loan.interestRate, tenureMonths: loan.tenure, startDate: disbursedAt });
 
     return prisma.$transaction(async (tx) => {
-      const disbursed = await tx.loan.update({
+      const updated = await tx.loan.update({
         where: { id },
-        data: { status: 'ACTIVE', disbursedAt: date },
-        include: { customer: true },
+        data: {
+          status: 'DISBURSED',
+          disbursedAt,
+          disbursementMode: disbursementData.mode,
+          receiverName: disbursementData.receiverName,
+          receiverBank: disbursementData.receiverBank,
+          receiverAccount: disbursementData.receiverAccount,
+          receiverIfsc: disbursementData.receiverIfsc,
+          updatedBy: userId,
+        },
       });
-
+      await tx.loanStatusHistory.create({
+        data: { loanId: id, fromStatus: 'DISBURSEMENT_PENDING', toStatus: 'DISBURSED', changedBy: userId },
+      });
       await tx.eMISchedule.deleteMany({ where: { loanId: id } });
       await tx.eMISchedule.createMany({
         data: schedule.map((e) => ({
-          loanId: id, emiNumber: e.emiNumber, dueDate: e.dueDate,
-          amount: e.amount, principal: e.principal, interest: e.interest,
+          loanId: id,
+          emiNumber: e.emiNumber,
+          dueDate: e.dueDate,
+          amount: parseFloat(e.amount),
+          principal: parseFloat(e.principal),
+          interest: parseFloat(e.interest),
+          balance: parseFloat(e.closingBalance),
         })),
       });
-
-      return disbursed;
+      return tx.loan.findUnique({ where: { id }, include: loanInclude });
     });
   }
 
-  async reject(id, userId, rejectionReason) {
+  async getStatusHistory(id) {
     const loan = await prisma.loan.findUnique({ where: { id } });
     if (!loan) throw new AppError('Loan not found', 404);
-    if (loan.status !== 'PENDING') throw new AppError('Only pending loans can be rejected', 400);
-
-    return prisma.$transaction(async (tx) => {
-      const rejected = await tx.loan.update({
-        where: { id },
-        data: { status: 'REJECTED', approvedBy: userId, approvedAt: new Date(), rejectionReason },
-        include: { customer: true, approver: { select: { id: true, name: true, email: true } } },
-      });
-      await tx.eMISchedule.deleteMany({ where: { loanId: id } });
-      return rejected;
+    return prisma.loanStatusHistory.findMany({
+      where: { loanId: id },
+      include: { user: { select: { id: true, name: true, role: true } } },
+      orderBy: { createdAt: 'asc' },
     });
-  }
-
-  async delete(id) {
-    const loan = await prisma.loan.findUnique({ where: { id } });
-    if (!loan) throw new AppError('Loan not found', 404);
-    if (loan.status === 'APPROVED' || loan.status === 'ACTIVE') {
-      throw new AppError('Approved or disbursed loans cannot be deleted', 400);
-    }
-    await prisma.loan.delete({ where: { id } });
   }
 }
 
-module.exports = new LoanService();
+function buildLoanWhere(query) {
+  const where = { deletedAt: null };
+  if (query.status) where.status = query.status;
+  if (query.customerId) where.customerId = query.customerId;
+  if (query.branchId) where.createdBy = { in: [] }; // branch filter via join — simplified
+  if (query.loanCategory) where.loanCategory = query.loanCategory;
+  if (query.startDate && query.endDate) {
+    where.createdAt = { gte: new Date(query.startDate), lte: new Date(query.endDate) };
+  }
+  if (query.search) {
+    where.OR = [
+      { loanNo: { contains: query.search, mode: 'insensitive' } },
+      { customer: { name: { contains: query.search, mode: 'insensitive' } } },
+      { customer: { phone: { contains: query.search } } },
+    ];
+  }
+  return where;
+}
+
+const loanListInclude = {
+  customer: { select: { id: true, appNo: true, name: true, phone: true } },
+  creator: { select: { id: true, name: true } },
+  _count: { select: { emiSchedules: true } },
+};
+
+const loanInclude = {
+  customer: true,
+  creator: { select: { id: true, name: true, email: true } },
+  approver: { select: { id: true, name: true, email: true } },
+  emiSchedules: { orderBy: { emiNumber: 'asc' } },
+  guarantors: { where: { deletedAt: null } },
+  nominees: { where: { deletedAt: null } },
+  documents: { where: { deletedAt: null } },
+  statusHistory: { orderBy: { createdAt: 'asc' }, include: { user: { select: { id: true, name: true } } } },
+};
+
+export default new LoanService();

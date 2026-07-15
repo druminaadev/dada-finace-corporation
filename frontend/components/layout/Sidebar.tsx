@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -9,7 +8,7 @@ import {
   FileText, CheckSquare, CheckCircle, Banknote, X, 
   Calendar, BarChart2, TrendingUp, AlertTriangle, Star, Clock, Wallet,
   ClipboardList, Activity, PanelLeftClose, PanelLeftOpen,
-  Calculator, Settings, HelpCircle, Building2
+  Calculator, Settings, HelpCircle, Building2, Database
 } from 'lucide-react'
 import { COLORS, GRADIENTS } from '@/lib/colors'
 
@@ -74,7 +73,20 @@ const NAV: NavGroup[] = [
       { label: 'Civil Score', path: '/civil-score', icon: Star },
     ],
   },
+  {
+    label: 'Master Setup', icon: Database, color: '#462C7D',
+    children: [
+      { label: 'States', path: '/master/states', icon: Database },
+      { label: 'Cities', path: '/master/cities', icon: Database },
+      { label: 'Areas', path: '/master/areas', icon: Database },
+      { label: 'Branches', path: '/master/branches', icon: Building2 },
+      { label: 'Loan Types', path: '/master/loan-types', icon: FileText },
+      { label: 'Banks', path: '/master/banks', icon: Database },
+    ],
+  },
 ]
+
+
 
 const BOTTOM_NAV = [
   { label: 'Settings', path: '/settings', icon: Settings, color: '#462C7D' },
@@ -83,15 +95,11 @@ const BOTTOM_NAV = [
 
 function BrandLogo() {
   return (
-    <div className="w-11 h-11 flex items-center justify-center shrink-0 overflow-hidden">
-      <Image
-        src="/nexzen-icon.png"
-        alt="NEXZEN"
-        width={44}
-        height={44}
-        className="h-11 w-11 object-contain"
-        priority
-      />
+    <div
+      className="w-11 h-11 flex items-center justify-center shrink-0 rounded-xl font-black text-lg text-white"
+      style={{ background: 'linear-gradient(135deg, #462C7D, #D552A3)' }}
+    >
+      D
     </div>
   )
 }
@@ -165,13 +173,13 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapse }: SidebarP
                       backgroundClip: 'text',
                     }}
                   >
-                    NEXZEN
+                    Dada Finance
                   </div>
                   <div
                     className="text-[10px] font-medium mt-0.5 truncate"
                     style={{ color: COLORS.primary }}
                   >
-                    Loan Management
+                    Finance & Corporation
                   </div>
                 </div>
               </div>

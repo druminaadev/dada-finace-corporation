@@ -1,43 +1,43 @@
-const emiService = require('./emi.service');
-const reminderService = require('../reminders/reminder.service');
-const asyncHandler = require('../../utils/asyncHandler');
-const ApiResponse = require('../../utils/apiResponse');
+import emiService from './emi.service.js';
+import asyncHandler from '../../utils/asyncHandler.js';
+import ApiResponse from '../../utils/apiResponse.js';
 
-class EMIController {
-  getCalendar = asyncHandler(async (req, res) => {
-    const emis = await emiService.getCalendar(req.query);
-    ApiResponse.success(res, emis, 'EMI calendar fetched successfully');
-  });
+export const getByLoan = asyncHandler(async (req, res) => {
+  const emis = await emiService.getByLoan(req.params.loanId);
+  ApiResponse.success(res, emis, 'EMI schedule fetched');
+});
 
-  getUpcoming = asyncHandler(async (req, res) => {
-    const emis = await emiService.getUpcoming(req.query.days);
-    ApiResponse.success(res, emis, 'Upcoming EMIs fetched successfully');
-  });
+export const getCalendar = asyncHandler(async (req, res) => {
+  const emis = await emiService.getCalendar(req.query);
+  ApiResponse.success(res, emis, 'EMI calendar fetched');
+});
 
-  getOverdue = asyncHandler(async (req, res) => {
-    const emis = await emiService.getOverdue();
-    ApiResponse.success(res, emis, 'Overdue EMIs fetched successfully');
-  });
+export const getUpcoming = asyncHandler(async (req, res) => {
+  const emis = await emiService.getUpcoming(req.query.days);
+  ApiResponse.success(res, emis, 'Upcoming EMIs fetched');
+});
 
-  getByLoanId = asyncHandler(async (req, res) => {
-    const emis = await emiService.getByLoanId(req.params.loanId);
-    ApiResponse.success(res, emis, 'Loan EMIs fetched successfully');
-  });
+export const getOverdue = asyncHandler(async (req, res) => {
+  const result = await emiService.getOverdue(req.query);
+  ApiResponse.paginated(res, result.emis, result.pagination, 'Overdue EMIs fetched');
+});
 
-  payEMI = asyncHandler(async (req, res) => {
-    const result = await emiService.payEMI(req.params.id, req.body);
-    ApiResponse.success(res, result, 'EMI payment recorded successfully');
-  });
+export const getTodayCollections = asyncHandler(async (req, res) => {
+  const emis = await emiService.getTodayCollections();
+  ApiResponse.success(res, emis, "Today's collections fetched");
+});
 
-  getPaymentHistory = asyncHandler(async (req, res) => {
-    const emi = await emiService.getPaymentHistory(req.params.id);
-    ApiResponse.success(res, emi, 'Payment history fetched successfully');
-  });
+export const collectPayment = asyncHandler(async (req, res) => {
+  const result = await emiService.collectPayment(req.params.id, req.body, req.user.id);
+  ApiResponse.success(res, result, 'Payment collected', 201);
+});
 
-  sendReminders = asyncHandler(async (req, res) => {
-    const result = await reminderService.sendUpcomingEmiReminders(req.body.days || req.query.days);
-    ApiResponse.success(res, result, 'EMI SMS reminders processed successfully');
-  });
-}
+export const reversePayment = asyncHandler(async (req, res) => {
+  const result = await emiService.reversePayment(req.params.paymentId, req.user.id, req.body.reason);
+  ApiResponse.success(res, result, 'Payment reversed');
+});
 
-module.exports = new EMIController();
+export const waiveEMI = asyncHandler(async (req, res) => {
+  const emi = await emiService.waiveEMI(req.params.id, req.user.id, req.body.note);
+  ApiResponse.success(res, emi, 'EMI waived');
+});

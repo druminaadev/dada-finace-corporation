@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button'
 interface PageHeaderProps {
   title: string
   subtitle?: string
+  steps?: string[]
+  currentStep?: number
   action?: {
     label: string
     onClick: () => void
@@ -12,13 +14,34 @@ interface PageHeaderProps {
   }
 }
 
-export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, steps, currentStep, action }: PageHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-6">
-      <div>
+      <div className="flex-1">
         <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{title}</h1>
         {subtitle && (
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>
+        )}
+        {steps && steps.length > 0 && (
+          <div className="flex items-center gap-2 mt-3">
+            {steps.map((s, i) => (
+              <React.Fragment key={i}>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                    style={{
+                      background: i <= (currentStep ?? 0) ? 'var(--accent)' : 'var(--border)',
+                      color: i <= (currentStep ?? 0) ? '#fff' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {i + 1}
+                  </div>
+                  <span className="text-xs hidden sm:inline" style={{ color: i <= (currentStep ?? 0) ? 'var(--accent)' : 'var(--text-secondary)' }}>{s}</span>
+                </div>
+                {i < steps.length - 1 && <div className="h-px w-4 flex-shrink-0" style={{ background: 'var(--border)' }} />}
+              </React.Fragment>
+            ))}
+          </div>
         )}
       </div>
       {action && (

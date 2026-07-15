@@ -1,14 +1,14 @@
 {
-  "name": "NEXZEN",
-  "short_name": "NEXZEN",
-  "description": "Loan Management System",
+  "name": "Dada Finance & Corporation",
+  "short_name": "Dada Finance",
+  "description": "Dada Finance & Corporation",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#462C7D",
   "icons": [
     {
-      "src": "/nexzen-icon.png",
+      "src": "/LOGO.png",
       "sizes": "any",
       "type": "image/png"
     }

@@ -1,50 +1,89 @@
-const Joi = require('joi');
+import { z } from 'zod';
 
-const customerValidators = {
-  create: Joi.object({
-    name: Joi.string().min(2).required(),
-    fatherName: Joi.string().optional().allow(''),
-    motherName: Joi.string().optional().allow(''),
-    email: Joi.string().email().optional().allow(''),
-    phone: Joi.string().pattern(/^[0-9]{10}$/).optional().allow(''),
-    mobile: Joi.string().pattern(/^[0-9]{10}$/).optional().allow(''),
-    altMobile: Joi.string().optional().allow(''),
-    altPhone: Joi.string().optional().allow(''),
-    address: Joi.string().optional().allow(''),
-    aadhaar: Joi.string().pattern(/^[0-9]{12}$/).optional().allow(''),
-    aadhar: Joi.string().pattern(/^[0-9]{12}$/).optional().allow(''),
-    pan: Joi.string().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i).optional().allow(''),
-    dob: Joi.alternatives().try(Joi.date(), Joi.string()).optional().allow(''),
-    age: Joi.alternatives().try(Joi.number(), Joi.string()).optional().allow(''),
-    gender: Joi.string().optional().allow(''),
-    maritalStatus: Joi.string().optional().allow(''),
-    bloodGroup: Joi.string().optional().allow(''),
-    occupation: Joi.string().optional().allow(''),
-    jobAddress: Joi.string().optional().allow(''),
-    // Bank details
-    bankAccountNo: Joi.string().optional().allow(''),
-    bankHolderName: Joi.string().optional().allow(''),
-    bankName: Joi.string().optional().allow(''),
-    bankBranch: Joi.string().optional().allow(''),
-    bankIfsc: Joi.string().optional().allow(''),
-    // Photo - allow large base64 strings
-    photoBase64: Joi.string().optional().allow('').max(10000000),
-    photoPath: Joi.string().optional().allow(''),
-    // Other
-    regDate: Joi.alternatives().try(Joi.date(), Joi.string()).optional().allow(''),
-    isActive: Joi.boolean().optional(),
-  }).unknown(true),
+const create = z
+  .object({
+    name: z.string().min(2).max(100),
+    fatherName: z.string().max(100).optional(),
+    motherName: z.string().max(100).optional(),
+    email: z.string().email().max(255).toLowerCase().optional(),
+    // Accept 'mobile' from frontend — service normalizes to 'phone'
+    mobile: z
+      .string()
+      .regex(/^[6-9]\d{9}$/, 'Invalid mobile number')
+      .optional(),
+    phone: z
+      .string()
+      .regex(/^[6-9]\d{9}$/, 'Invalid phone number')
+      .optional(),
+    altPhone: z
+      .string()
+      .regex(/^[6-9]\d{9}$/)
+      .optional(),
+    address: z.string().max(500).optional(),
+    jobAddress: z.string().max(500).optional(),
+    aadhaar: z
+      .string()
+      .regex(/^\d{12}$/, 'Aadhaar must be 12 digits')
+      .optional(),
+    aadhar: z
+      .string()
+      .regex(/^\d{12}$/, 'Aadhaar must be 12 digits')
+      .optional(),
+    pan: z
+      .string()
+      .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i, 'Invalid PAN format')
+      .toUpperCase()
+      .optional(),
+    dob: z.string().datetime({ offset: true }).optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+    age: z.coerce.number().int().min(0).max(150).optional(),
+    gender: z.enum(['Male', 'Female', 'Other']).optional(),
+    maritalStatus: z.enum(['Single', 'Married', 'Divorced', 'Widowed']).optional(),
+    bloodGroup: z.string().max(5).optional(),
+    occupation: z.string().max(100).optional(),
+    income: z.coerce.number().nonnegative().optional(),
+    businessInfo: z.string().max(500).optional(),
+    bankAccountNo: z.string().max(20).optional(),
+    bankHolderName: z.string().max(100).optional(),
+    bankName: z.string().max(100).optional(),
+    bankBranch: z.string().max(100).optional(),
+    bankIfsc: z
+      .string()
+      .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/i, 'Invalid IFSC code')
+      .toUpperCase()
+      .optional(),
+    stateId: z.string().uuid().optional(),
+    cityId: z.string().uuid().optional(),
+    areaId: z.string().uuid().optional(),
+    branchId: z.string().uuid().optional(),
+    employeeId: z.string().uuid().optional(),
+    // Base64 photo — limit to ~3.5MB base64 string (5MB file * 1.33 overhead)
+    photoBase64: z.string().max(4_700_000).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .strict()
+  .refine((d) => d.phone || d.mobile, {
+    message: 'Either phone or mobile number is required',
+    path: ['phone'],
+  });
 
-  update: Joi.object({
-    name: Joi.string().min(2).optional(),
-    email: Joi.string().email().optional(),
-    phone: Joi.string().pattern(/^[0-9]{10}$/).optional(),
-    address: Joi.string().optional(),
-    aadhaar: Joi.string().pattern(/^[0-9]{12}$/).optional(),
-    pan: Joi.string().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/).optional(),
-    dob: Joi.date().optional(),
-    isActive: Joi.boolean().optional(),
-  }),
-};
+const update = z
+  .object({
+    name: z.string().min(2).max(100).optional(),
+    email: z.string().email().max(255).toLowerCase().optional(),
+    phone: z.string().regex(/^[6-9]\d{9}$/).optional(),
+    address: z.string().max(500).optional(),
+    aadhaar: z.string().regex(/^\d{12}$/).optional(),
+    pan: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i).toUpperCase().optional(),
+    dob: z.string().optional(),
+    isActive: z.boolean().optional(),
+    occupation: z.string().max(100).optional(),
+    income: z.coerce.number().nonnegative().optional(),
+    bankAccountNo: z.string().max(20).optional(),
+    bankHolderName: z.string().max(100).optional(),
+    bankName: z.string().max(100).optional(),
+    bankBranch: z.string().max(100).optional(),
+    bankIfsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/i).toUpperCase().optional(),
+  })
+  .strict();
 
-module.exports = customerValidators;
+export default { create, update };

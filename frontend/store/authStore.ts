@@ -3,38 +3,12 @@ import { persist } from 'zustand/middleware'
 import { apiClient } from '@/lib/apiClient'
 import { API_ENDPOINTS } from '@/lib/api'
 
-const FRONTEND_ONLY_MODE = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
-
-const demoUsers: Record<string, AuthUser> = {
-  'admin@loanmanagement.com': {
-    id: 1,
-    name: 'Admin User',
-    email: 'admin@loanmanagement.com',
-    role: 'Admin',
-    branchId: 1,
-  },
-  'employee@loanmanagement.com': {
-    id: 2,
-    name: 'Employee User',
-    email: 'employee@loanmanagement.com',
-    role: 'Employee',
-    branchId: 1,
-  },
-  'user@loanmanagement.com': {
-    id: 3,
-    name: 'Demo User',
-    email: 'user@loanmanagement.com',
-    role: 'User',
-    branchId: 1,
-  },
-}
-
-interface AuthUser { 
-  id: number
+interface AuthUser {
+  id: string
   name: string
   email: string
   role: string
-  branchId?: number
+  branchId?: string | null
 }
 
 interface AuthStore {
@@ -57,23 +31,8 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       hasHydrated: false,
       setHasHydrated: (value) => set({ hasHydrated: value }),
+
       login: async (email, password) => {
-        if (FRONTEND_ONLY_MODE) {
-          const normalizedEmail = email.trim().toLowerCase()
-          const user = demoUsers[normalizedEmail]
-
-          if (!user || password !== 'admin123') {
-            return false
-          }
-
-          set({
-            user,
-            token: 'frontend-only-demo-token',
-            isAuthenticated: true,
-          })
-          return true
-        }
-
         try {
           const response = await apiClient.post<{
             success: boolean
@@ -99,12 +58,8 @@ export const useAuthStore = create<AuthStore>()(
           return false
         }
       },
-      logout: () => {
-        if (FRONTEND_ONLY_MODE) {
-          set({ user: null, token: null, refreshToken: null, isAuthenticated: false })
-          return
-        }
 
+      logout: () => {
         const token = get().token
         if (token) {
           apiClient.post(API_ENDPOINTS.LOGOUT, {}, token).catch(console.error)
@@ -113,7 +68,7 @@ export const useAuthStore = create<AuthStore>()(
       },
     }),
     {
-      name: 'nexzen-auth',
+      name: 'dada-auth',
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)
       },

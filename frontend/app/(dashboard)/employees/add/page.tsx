@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { getNextEmployeeCode, useStore } from '@/store/appStore'
-import { useUIStore } from '@/store/uiStore'
 import { User, Upload, X, Camera, CheckCircle, ShieldCheck } from 'lucide-react'
 
 interface EmployeeForm { name: string; branchId: string; contact: string; role: string; email: string }
@@ -16,7 +15,7 @@ const ROLES = ['Loan Officer', 'Senior Officer', 'Branch Manager', 'Accountant',
 
 export default function AddEmployeePage() {
   const { branches, employees, addEmployee } = useStore()
-  const { showToast } = useUIStore()
+  
   const router = useRouter()
   const { register, handleSubmit, formState: { errors }, reset } = useForm<EmployeeForm>()
   const [employeePhoto, setEmployeePhoto] = useState<File | null>(null)
@@ -29,15 +28,12 @@ export default function AddEmployeePage() {
     addEmployee({ ...data, branchId: Number(data.branchId) })
     const { addNotification } = useUIStore.getState()
     addNotification('New Employee Added', `${data.name} (${nextEmployeeCode}) has been successfully added to the system.`)
-    showToast('Employee added successfully!', 'success')
     reset()
     router.push('/employees/list')
   }
 
   const handleFile = (file: File | null | undefined) => {
     if (!file) return
-    if (!file.type.startsWith('image/')) { showToast('Please select an image file', 'error'); return }
-    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB', 'error'); return }
     setEmployeePhoto(file)
     setPhotoConfirmed(false)
   }
@@ -141,7 +137,6 @@ export default function AddEmployeePage() {
                     {!photoConfirmed && (
                       <button
                         type="button"
-                        onClick={() => { setPhotoConfirmed(true); showToast('Photo confirmed!', 'success') }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all"
                         style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.35)' }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(16,185,129,0.22)')}

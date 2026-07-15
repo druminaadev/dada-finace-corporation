@@ -1,22 +1,30 @@
-const Joi = require('joi');
+import { z } from 'zod';
 
-const authValidators = {
-  register: Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-    name: Joi.string().min(2).required(),
-    phone: Joi.string().pattern(/^[0-9]{10}$/).optional(),
-    role: Joi.string().valid('ADMIN', 'EMPLOYEE', 'USER').default('USER'),
-  }),
+const register = z
+  .object({
+    name: z.string().min(2).max(100),
+    email: z.string().email().max(255).toLowerCase(),
+    password: z
+      .string()
+      .min(8)
+      .max(128)
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
+        'Password must contain uppercase, lowercase, number, and special character'
+      ),
+    phone: z
+      .string()
+      .regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number')
+      .optional(),
+    role: z.enum(['ADMIN', 'EMPLOYEE', 'USER']).default('EMPLOYEE'),
+  })
+  .strict(); // Reject unknown fields
 
-  login: Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
-  }),
+const login = z
+  .object({
+    email: z.string().email().max(255).toLowerCase(),
+    password: z.string().min(1).max(128),
+  })
+  .strict();
 
-  refreshToken: Joi.object({
-    refreshToken: Joi.string().required(),
-  }),
-};
-
-module.exports = authValidators;
+export default { register, login };

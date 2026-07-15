@@ -5,7 +5,6 @@ import {
   HelpCircle, ChevronDown, Send, FileText, Zap, Users,
   CheckCircle
 } from 'lucide-react'
-import { useUIStore } from '@/store/uiStore'
 
 const quickLinks = [
   { icon: Book, label: 'Documentation', description: 'Complete user guide', color: '#462C7D' },
@@ -86,7 +85,7 @@ const faqs = [
 ]
 
 export default function HelpPage() {
-  const { showToast } = useUIStore()
+  
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null)
   const [supportForm, setSupportForm] = useState({
@@ -99,10 +98,8 @@ export default function HelpPage() {
 
   const handleSubmitTicket = () => {
     if (!supportForm.name || !supportForm.email || !supportForm.subject || !supportForm.message) {
-      showToast('Please fill in all required fields', 'error')
       return
     }
-    showToast('Support ticket submitted successfully! We\'ll respond within 24 hours.', 'success')
     setSupportForm({ name: '', email: '', subject: '', priority: 'medium', message: '' })
   }
 
@@ -119,7 +116,7 @@ export default function HelpPage() {
       {/* Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2" style={{ color: '#1e293b' }}>Help & Support</h1>
-        <p className="text-slate-500">We are here to help you get the most out of NEXZEN</p>
+        <p className="text-slate-500">We are here to help you get the most out of Dada Finance & Corporation</p>
       </div>
 
       {/* Search Bar */}
@@ -257,7 +254,7 @@ export default function HelpPage() {
               <Mail size={32} style={{ color: '#3B82F6' }} />
             </div>
             <h3 className="text-base font-semibold mb-2" style={{ color: '#1e293b' }}>Email Support</h3>
-            <p className="text-lg font-bold mb-1" style={{ color: '#3B82F6' }}>support@nexzen.com</p>
+            <p className="text-lg font-bold mb-1" style={{ color: '#3B82F6' }}>support@dadafinance.com</p>
             <p className="text-sm text-slate-500">Response within 24 hours</p>
           </div>
 

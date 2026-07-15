@@ -1,25 +1,42 @@
-const express = require('express');
-const { stateController, cityController, areaController, branchController, loanTypeController, bankController } = require('./master.controller');
-const { authenticate, authorize } = require('../../middlewares/auth');
+import { Router } from 'express';
+import { authenticate, authorize } from '../../middlewares/auth.js';
+import * as ctrl from './master.controller.js';
 
-const router = express.Router();
+const router = Router();
 router.use(authenticate);
 
-function crudRoutes(ctrl) {
-  const r = express.Router();
-  r.get('/', ctrl.getAll);
-  r.get('/:id', ctrl.getById);
-  r.post('/', authorize('ADMIN'), ctrl.create);
-  r.put('/:id', authorize('ADMIN'), ctrl.update);
-  r.delete('/:id', authorize('ADMIN'), ctrl.delete);
-  return r;
-}
+const adminOnly = authorize('ADMIN', 'MANAGER');
 
-router.use('/states', crudRoutes(stateController));
-router.use('/cities', crudRoutes(cityController));
-router.use('/areas', crudRoutes(areaController));
-router.use('/branches', crudRoutes(branchController));
-router.use('/loan-types', crudRoutes(loanTypeController));
-router.use('/banks', crudRoutes(bankController));
+const resource = (r, c) => {
+  r.get('/', c.getAll);
+  r.get('/:id', c.getById);
+  r.post('/', adminOnly, c.create);
+  r.put('/:id', adminOnly, c.update);
+  r.patch('/:id/toggle', adminOnly, c.toggleActive);
+};
 
-module.exports = router;
+const stateRouter = Router();
+resource(stateRouter, ctrl.stateCtrl);
+router.use('/states', stateRouter);
+
+const cityRouter = Router();
+resource(cityRouter, ctrl.cityCtrl);
+router.use('/cities', cityRouter);
+
+const areaRouter = Router();
+resource(areaRouter, ctrl.areaCtrl);
+router.use('/areas', areaRouter);
+
+const branchRouter = Router();
+resource(branchRouter, ctrl.branchCtrl);
+router.use('/branches', branchRouter);
+
+const loanTypeRouter = Router();
+resource(loanTypeRouter, ctrl.loanTypeCtrl);
+router.use('/loan-types', loanTypeRouter);
+
+const bankRouter = Router();
+resource(bankRouter, ctrl.bankCtrl);
+router.use('/banks', bankRouter);
+
+export default router;

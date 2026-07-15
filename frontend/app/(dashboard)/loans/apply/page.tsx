@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLoanDraftStore } from '@/store/loanDraftStore'
-import { useUIStore } from '@/store/uiStore'
 import { CheckCircle, Home, AlertCircle, Trash2 } from 'lucide-react'
 import { Stage1Aadhaar } from '@/components/loan-stages/Stage1Aadhaar'
 import { Stage2CustomerLoan } from '@/components/loan-stages/Stage2CustomerLoan'
@@ -20,19 +19,18 @@ const STAGES = [
 
 export default function LoanApplicationPage() {
   const router = useRouter()
-  const { currentStage, canAccessStage, setCurrentStage, submitted, submittedLoanId, resetDraft } = useLoanDraftStore()
-  const { showToast } = useUIStore()
+  const { currentStage, canAccessStage, setCurrentStage, submitted, submittedLoanId, resetDraft, aadhaarSkipped } = useLoanDraftStore()
+  
   const [showStorageWarning, setShowStorageWarning] = useState(false)
 
   useEffect(() => {
     if (submitted && submittedLoanId) {
-      showToast('Loan application submitted successfully!', 'success')
       setTimeout(() => {
         resetDraft()
         router.push('/loans/list')
       }, 2000)
     }
-  }, [submitted, submittedLoanId, router, showToast, resetDraft])
+  }, [submitted, submittedLoanId, router, resetDraft])
 
   useEffect(() => {
     // Check localStorage size
@@ -49,8 +47,7 @@ export default function LoanApplicationPage() {
 
   const handleClearStorage = () => {
     if (confirm('This will clear all saved loan application data. Continue?')) {
-      localStorage.removeItem('nexzen-loan-draft')
-      showToast('Storage cleared successfully', 'success')
+      localStorage.removeItem('dada-loan-draft')
       setShowStorageWarning(false)
       window.location.reload()
     }
@@ -58,7 +55,6 @@ export default function LoanApplicationPage() {
 
   const goToStage = (stage: number) => {
     if (!canAccessStage(stage)) {
-      showToast('Please complete previous stages first', 'warning')
       return
     }
     setCurrentStage(stage)
@@ -147,7 +143,13 @@ export default function LoanApplicationPage() {
                   >
                     <div className="flex-shrink-0">
                       {isCompleted ? (
-                        <CheckCircle size={20} />
+                        stage.num === 1 && aadhaarSkipped ? (
+                          <div className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold border border-amber-200 uppercase tracking-wider">
+                            Skipped
+                          </div>
+                        ) : (
+                          <CheckCircle size={20} />
+                        )
                       ) : (
                         <div
                           className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${

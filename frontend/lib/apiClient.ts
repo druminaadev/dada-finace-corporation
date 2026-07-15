@@ -40,7 +40,7 @@ class ApiClient {
 
     this.refreshTokenPromise = (async () => {
       try {
-        const stored = localStorage.getItem('nexzen-auth')
+        const stored = localStorage.getItem('dada-auth')
         if (!stored) throw new Error('No auth data')
         
         const { state } = JSON.parse(stored)
@@ -64,7 +64,7 @@ class ApiClient {
         const updated = JSON.parse(stored)
         updated.state.token = newAccessToken
         updated.state.refreshToken = newRefreshToken
-        localStorage.setItem('nexzen-auth', JSON.stringify(updated))
+        localStorage.setItem('dada-auth', JSON.stringify(updated))
 
         return newAccessToken
       } finally {
@@ -95,7 +95,7 @@ class ApiClient {
           return this.request<T>(endpoint, { ...options, token: newToken, skipRefresh: true })
         } catch (refreshError) {
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('nexzen-auth')
+            localStorage.removeItem('dada-auth')
             if (!window.location.pathname.includes('/login')) {
               window.location.href = '/login'
             }

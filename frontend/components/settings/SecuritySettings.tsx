@@ -1,9 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { useUIStore } from '@/store/uiStore'
 
 export default function NotificationSettings() {
-  const { showToast } = useUIStore()
+  
   const [settings, setSettings] = useState({
     emailNotifications: true,
     smsNotifications: false,
@@ -14,7 +13,6 @@ export default function NotificationSettings() {
 
   const handleToggle = (key: string) => {
     setSettings({ ...settings, [key]: !settings[key as keyof typeof settings] })
-    showToast('Notification preferences updated', 'success')
   }
 
   const items = [

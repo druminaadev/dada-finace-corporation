@@ -1,12 +1,12 @@
-const Joi = require('joi');
+import { z } from 'zod';
 
-const emiValidators = {
-  payEMI: Joi.object({
-    amount: Joi.number().positive().required(),
-    paymentMode: Joi.string().valid('CASH', 'PAYTM', 'BANK_TRANSFER', 'UPI', 'CHEQUE').required(),
-    transactionId: Joi.string().optional(),
-    remarks: Joi.string().optional(),
-  }),
-};
+const payEMI = z
+  .object({
+    amount: z.number().positive().max(10_000_000),
+    paymentMode: z.enum(['CASH', 'PAYTM', 'BANK_TRANSFER', 'UPI', 'CHEQUE']),
+    transactionId: z.string().max(100).optional(),
+    remarks: z.string().max(500).optional(),
+  })
+  .strict();
 
-module.exports = emiValidators;
+export default { payEMI };

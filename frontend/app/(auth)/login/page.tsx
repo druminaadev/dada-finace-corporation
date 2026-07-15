@@ -2,12 +2,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
-import { useUIStore } from '@/store/uiStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { ToastContainer } from '@/components/ui/Toast'
 import { Eye, EyeOff, Lock, Sun, Moon } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { toast } from '@/store/toastStore'
 
 const SLIDES = [
   {
@@ -39,24 +38,25 @@ export default function LoginPage() {
     return () => clearInterval(t)
   }, [])
   const { login } = useAuthStore()
-  const { showToast } = useUIStore()
+  
   const { theme, setTheme } = useTheme()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    await new Promise(r => setTimeout(r, 400))
     const ok = await login(email, password)
     setLoading(false)
-    if (ok) { showToast('Login successful! Welcome back.', 'success'); router.push('/dashboard') }
-    else showToast('Invalid username or password', 'error')
+    if (ok) {
+      toast.success('Welcome back!', 'Redirecting to dashboard...')
+      router.push('/dashboard')
+    } else {
+      toast.error('Login Failed', 'Invalid email or password.')
+    }
   }
 
   return (
     <div className="min-h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
-      <ToastContainer />
-
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
@@ -65,8 +65,8 @@ export default function LoginPage() {
             D
           </div>
           <div>
-            <div className="text-base font-bold text-white drop-shadow">NEXZEN</div>
-            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>Loan Management System</div>
+            <div className="text-base font-bold text-white drop-shadow">Dada Finance & Corporation</div>
+            <div className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>Finance & Corporation</div>
           </div>
         </div>
         <button
@@ -189,29 +189,11 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Demo credentials */}
-              <div className="mt-6 p-4 rounded-xl" style={{ background: 'var(--hover)', border: '1px solid var(--border)' }}>
-                <p className="text-xs font-semibold mb-2.5" style={{ color: 'var(--text-primary)' }}>Demo Credentials</p>
-                <div className="space-y-2 text-xs">
-                  {[
-                    { role: 'Admin',    cred: 'admin@loanmanagement.com / admin123' },
-                    { role: 'Employee', cred: 'employee@loanmanagement.com / admin123' },
-                    { role: 'User',     cred: 'user@loanmanagement.com / admin123' },
-                  ].map(c => (
-                    <div key={c.role} className="flex items-center justify-between">
-                      <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{c.role}</span>
-                      <span className="font-mono text-[11px] px-2.5 py-1 rounded-lg"
-                        style={{ background: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
-                        {c.cred}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+
             </div>
 
             <p className="text-center text-xs mt-6" style={{ color: 'var(--text-secondary)' }}>
-              Copyright © 2025 NEXZEN
+              Copyright © 2025 Dada Finance & Corporation
             </p>
           </div>
         </div>

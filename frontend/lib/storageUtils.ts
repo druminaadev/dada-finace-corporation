@@ -1,7 +1,7 @@
 // Utility to clear loan draft storage
 export function clearLoanDraft() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('nexzen-loan-draft')
+    localStorage.removeItem('dada-loan-draft')
   }
 }
 
@@ -28,7 +28,7 @@ export function clearAllStorage() {
 export function migrateStripPhotos() {
   if (typeof window === 'undefined') return
   try {
-    const raw = localStorage.getItem('nexzen-lms-store')
+    const raw = localStorage.getItem('dada-lms-store')
     if (!raw) return
     const parsed = JSON.parse(raw)
     let dirty = false
@@ -49,9 +49,9 @@ export function migrateStripPhotos() {
         return strip(c)
       })
     }
-    if (dirty) localStorage.setItem('nexzen-lms-store', JSON.stringify(parsed))
+    if (dirty) localStorage.setItem('dada-lms-store', JSON.stringify(parsed))
   } catch {
     // If still corrupt, wipe the key entirely
-    localStorage.removeItem('nexzen-lms-store')
+    localStorage.removeItem('dada-lms-store')
   }
 }

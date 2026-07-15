@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useStore } from '@/store/appStore'
-import { useUIStore } from '@/store/uiStore'
 
 const COLORS = {
   primary: '#462C7D',
@@ -43,7 +42,7 @@ function ActionButtons({ onEdit, onDelete }: { onEdit: () => void; onDelete: () 
 
 export function StatePage() {
   const { states, addState, updateState, deleteState } = useStore()
-  const { showToast } = useUIStore()
+  
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null)
   const [name, setName] = useState('')
@@ -52,8 +51,6 @@ export function StatePage() {
   const openEdit = (s: { id: number; name: string }) => { setEditing(s); setName(s.name); setOpen(true) }
   const save = () => {
     if (!name.trim()) return
-    if (editing) { updateState(editing.id, { name }); showToast('State updated', 'success') }
-    else { addState({ name }); showToast('State added', 'success') }
     setOpen(false)
   }
 
@@ -67,7 +64,6 @@ export function StatePage() {
       accessor: (row: any) => (
         <ActionButtons 
           onEdit={() => openEdit(row)} 
-          onDelete={() => { deleteState(row.id); showToast('State deleted', 'warning') }} 
         />
       )
     },
@@ -100,7 +96,7 @@ export function StatePage() {
 
 export function CityPage() {
   const { cities, states, addCity, updateCity, deleteCity } = useStore()
-  const { showToast } = useUIStore()
+  
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: number; stateId: number; name: string } | null>(null)
   const [form, setForm] = useState({ name: '', stateId: '' })
@@ -114,8 +110,6 @@ export function CityPage() {
   const save = () => {
     if (!form.name.trim() || !form.stateId) return
     const d = { name: form.name, stateId: Number(form.stateId) }
-    if (editing) { updateCity(editing.id, d); showToast('City updated', 'success') }
-    else { addCity(d); showToast('City added', 'success') }
     setOpen(false)
   }
 
@@ -135,7 +129,6 @@ export function CityPage() {
       accessor: (row: any) => (
         <ActionButtons 
           onEdit={() => openEdit(row)} 
-          onDelete={() => { deleteCity(row.id); showToast('City deleted', 'warning') }} 
         />
       )
     },
@@ -182,7 +175,7 @@ export function CityPage() {
 
 export function AreaPage() {
   const { areas, cities, states, addArea, updateArea, deleteArea } = useStore()
-  const { showToast } = useUIStore()
+  
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: number; cityId: number; name: string } | null>(null)
   const [form, setForm] = useState({ name: '', cityId: '' })
@@ -196,8 +189,6 @@ export function AreaPage() {
   const save = () => {
     if (!form.name.trim() || !form.cityId) return
     const d = { name: form.name, cityId: Number(form.cityId) }
-    if (editing) { updateArea(editing.id, d); showToast('Area updated', 'success') }
-    else { addArea(d); showToast('Area added', 'success') }
     setOpen(false)
   }
 
@@ -222,7 +213,6 @@ export function AreaPage() {
       accessor: (row: any) => (
         <ActionButtons 
           onEdit={() => openEdit(row)} 
-          onDelete={() => { deleteArea(row.id); showToast('Area deleted', 'warning') }} 
         />
       )
     },
@@ -269,7 +259,7 @@ export function AreaPage() {
 
 export function BranchPage() {
   const { branches, addBranch, updateBranch, deleteBranch } = useStore()
-  const { showToast } = useUIStore()
+  
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: number; name: string; address: string } | null>(null)
   const [form, setForm] = useState({ name: '', address: '' })
@@ -282,8 +272,6 @@ export function BranchPage() {
   }
   const save = () => {
     if (!form.name.trim()) return
-    if (editing) { updateBranch(editing.id, form); showToast('Branch updated', 'success') }
-    else { addBranch(form); showToast('Branch added', 'success') }
     setOpen(false)
   }
 
@@ -298,7 +286,6 @@ export function BranchPage() {
       accessor: (row: any) => (
         <ActionButtons 
           onEdit={() => openEdit(row)} 
-          onDelete={() => { deleteBranch(row.id); showToast('Branch deleted', 'warning') }} 
         />
       )
     },
@@ -343,7 +330,7 @@ export function BranchPage() {
 
 export function LoanTypePage() {
   const { loanTypes, addLoanType, updateLoanType, deleteLoanType } = useStore()
-  const { showToast } = useUIStore()
+  
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: number; name: string; description: string } | null>(null)
   const [form, setForm] = useState({ name: '', description: '' })
@@ -356,8 +343,6 @@ export function LoanTypePage() {
   }
   const save = () => {
     if (!form.name.trim()) return
-    if (editing) { updateLoanType(editing.id, form); showToast('Loan type updated', 'success') }
-    else { addLoanType(form); showToast('Loan type added', 'success') }
     setOpen(false)
   }
 
@@ -372,7 +357,6 @@ export function LoanTypePage() {
       accessor: (row: any) => (
         <ActionButtons 
           onEdit={() => openEdit(row)} 
-          onDelete={() => { deleteLoanType(row.id); showToast('Loan type deleted', 'warning') }} 
         />
       )
     },
@@ -417,7 +401,7 @@ export function LoanTypePage() {
 
 export function BankPage() {
   const { banks, addBank, updateBank, deleteBank } = useStore()
-  const { showToast } = useUIStore()
+  
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null)
   const [name, setName] = useState('')
@@ -426,8 +410,6 @@ export function BankPage() {
   const openEdit = (b: { id: number; name: string }) => { setEditing(b); setName(b.name); setOpen(true) }
   const save = () => {
     if (!name.trim()) return
-    if (editing) { updateBank(editing.id, { name }); showToast('Bank updated', 'success') }
-    else { addBank({ name }); showToast('Bank added', 'success') }
     setOpen(false)
   }
 
@@ -441,7 +423,6 @@ export function BankPage() {
       accessor: (row: any) => (
         <ActionButtons 
           onEdit={() => openEdit(row)} 
-          onDelete={() => { deleteBank(row.id); showToast('Bank deleted', 'warning') }} 
         />
       )
     },

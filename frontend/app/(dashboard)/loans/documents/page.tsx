@@ -65,8 +65,8 @@ function DocumentContent() {
 
   const Header = () => (
     <div className="text-center mb-8 pb-4 border-b-2 border-slate-800">
-      <h1 className="text-2xl font-bold text-slate-900" contentEditable={isEditing} suppressContentEditableWarning>NEXZEN</h1>
-      <p className="text-sm text-slate-600 mt-1" contentEditable={isEditing} suppressContentEditableWarning>Loan Management System</p>
+      <h1 className="text-2xl font-bold text-slate-900" contentEditable={isEditing} suppressContentEditableWarning>Dada Finance & Corporation</h1>
+      <p className="text-sm text-slate-600 mt-1" contentEditable={isEditing} suppressContentEditableWarning>Finance & Corporation</p>
       <p className="text-xs text-slate-500 mt-0.5" contentEditable={isEditing} suppressContentEditableWarning>Confidential Document</p>
     </div>
   )
@@ -135,7 +135,7 @@ function DocumentContent() {
             <p className="text-sm text-slate-700 mb-6" contentEditable={isEditing} suppressContentEditableWarning>To,<br /><strong>{customer.name}</strong><br />{customer.mobile}</p>
             <p className="text-sm text-slate-700 mb-4" contentEditable={isEditing} suppressContentEditableWarning>Dear {customer.name},</p>
             <p className="text-sm text-slate-700 mb-4" contentEditable={isEditing} suppressContentEditableWarning style={{ outline: isEditing ? '1px dashed #831C91' : 'none', padding: isEditing ? '4px' : '0' }}>
-              We are pleased to inform you that your loan application <strong>{customer.appNo}</strong> has been sanctioned by NEXZEN.
+              We are pleased to inform you that your loan application <strong>{customer.appNo}</strong> has been sanctioned by Dada Finance & Corporation.
             </p>
             <div className="my-4 grid grid-cols-2 gap-x-8">
               <Field label="Sanctioned Amount" value={fmt(loan.amount)} />
@@ -153,7 +153,7 @@ function DocumentContent() {
             <Header />
             <h2 className="text-lg font-bold text-center mb-6 text-slate-800" contentEditable={isEditing} suppressContentEditableWarning>PROMISSORY NOTE</h2>
             <p className="text-sm text-slate-700 mb-6" contentEditable={isEditing} suppressContentEditableWarning style={{ outline: isEditing ? '1px dashed #831C91' : 'none', padding: isEditing ? '4px' : '0' }}>
-              I, <strong>{customer.name}</strong>, son/daughter of <strong>{customer.fatherName}</strong>, residing at {customer.mobile}, hereby promise to pay NEXZEN or order, the sum of <strong>{fmt(loan.amount)}</strong> (Rupees {loan.amount} only) with interest at <strong>{loan.interestRate}%</strong> per annum, in <strong>{loan.installments}</strong> equal installments commencing from <strong>{fmtDate(loan.emiStartDate)}</strong>.
+              I, <strong>{customer.name}</strong>, son/daughter of <strong>{customer.fatherName}</strong>, residing at {customer.mobile}, hereby promise to pay Dada Finance & Corporation or order, the sum of <strong>{fmt(loan.amount)}</strong> (Rupees {loan.amount} only) with interest at <strong>{loan.interestRate}%</strong> per annum, in <strong>{loan.installments}</strong> equal installments commencing from <strong>{fmtDate(loan.emiStartDate)}</strong>.
             </p>
             <div className="grid grid-cols-2 gap-x-8">
               <Field label="Principal Amount" value={fmt(loan.amount)} />

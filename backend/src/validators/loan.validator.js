@@ -1,28 +1,41 @@
-const Joi = require('joi');
+import { z } from 'zod';
 
-const loanValidators = {
-  create: Joi.object({
-    customerId: Joi.string().uuid().required(),
-    amount: Joi.number().positive().required(),
-    interestRate: Joi.number().positive().max(100).required(),
-    tenure: Joi.number().integer().positive().required(),
-    purpose: Joi.string().optional(),
-  }),
+const create = z
+  .object({
+    customerId: z.string().uuid(),
+    loanCategory: z.enum(['GOLD', 'PERSONAL', 'VEHICLE']).default('PERSONAL'),
+    amount: z.number().positive().max(100_000_000),
+    interestRate: z.number().positive().max(100),
+    interestType: z.enum(['FLAT', 'REDUCING']).default('FLAT'),
+    tenure: z.number().int().positive().max(360),
+    processingFee: z.number().nonnegative().default(0),
+    purpose: z.string().max(500).optional(),
+    notes: z.string().max(1000).optional(),
+    securityType: z.string().max(100).optional(),
+    receiverMobile: z.string().regex(/^[6-9]\d{9}$/).optional(),
+  })
+  .strict();
 
-  update: Joi.object({
-    amount: Joi.number().positive().optional(),
-    interestRate: Joi.number().positive().max(100).optional(),
-    tenure: Joi.number().integer().positive().optional(),
-    purpose: Joi.string().optional(),
-  }),
+const update = z
+  .object({
+    amount: z.number().positive().max(100_000_000).optional(),
+    interestRate: z.number().positive().max(100).optional(),
+    tenure: z.number().int().positive().max(360).optional(),
+    purpose: z.string().max(500).optional(),
+    notes: z.string().max(1000).optional(),
+  })
+  .strict();
 
-  approve: Joi.object({
-    disbursedAt: Joi.date().optional(),
-  }),
+const reject = z
+  .object({
+    rejectionReason: z.string().min(5).max(500),
+  })
+  .strict();
 
-  reject: Joi.object({
-    rejectionReason: Joi.string().required(),
-  }),
-};
+const disburse = z
+  .object({
+    disbursedAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .strict();
 
-module.exports = loanValidators;
+export default { create, update, reject, disburse };

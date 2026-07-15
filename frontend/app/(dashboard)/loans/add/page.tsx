@@ -8,14 +8,13 @@ import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/store/authStore'
-import { useUIStore } from '@/store/uiStore'
 import { Search, User, Phone, MapPin, ChevronRight, ChevronLeft, Save, Mail, Share2, Upload as UploadIcon, CheckCircle, Camera, FileText, X } from 'lucide-react'
+import { toast } from '@/store/toastStore'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-const FRONTEND_ONLY = process.env.NEXT_PUBLIC_FRONTEND_ONLY !== 'false'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'
 
 export default function AddLoanPage() {
-  const { showToast } = useUIStore()
+  
   const { token } = useAuthStore()
   const router = useRouter()
   const [currentStage, setCurrentStage] = useState(1)
@@ -54,36 +53,9 @@ export default function AddLoanPage() {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      showToast('Enter name, mobile, or Aadhaar to search', 'error')
       return
     }
     setSearching(true)
-    
-    if (FRONTEND_ONLY) {
-      await new Promise(r => setTimeout(r, 500))
-      const query = searchQuery.toLowerCase()
-      
-      const { customers } = await import('@/store/appStore').then(m => ({ customers: m.useStore.getState().customers }))
-      
-      const results = customers
-        .filter(c => 
-          c.name.toLowerCase().includes(query) || 
-          c.mobile.includes(query) || 
-          c.aadhar.includes(query)
-        )
-        .map(c => ({
-          id: c.id,
-          name: c.name,
-          phone: c.mobile,
-          aadhaar: c.aadhar,
-          address: c.jobAddress || 'N/A'
-        }))
-      
-      setSearchResults(results)
-      if (results.length === 0) showToast('No customers found', 'info')
-      setSearching(false)
-      return
-    }
     
     try {
       const res = await fetch(`${API_BASE}/customers?search=${encodeURIComponent(searchQuery)}`, {
@@ -92,9 +64,7 @@ export default function AddLoanPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
       setSearchResults(data.data || [])
-      if (data.data.length === 0) showToast('No customers found', 'info')
     } catch (err: any) {
-      showToast(err.message || 'Search failed', 'error')
     } finally {
       setSearching(false)
     }
@@ -116,7 +86,6 @@ export default function AddLoanPage() {
       address: c.jobAddress || 'N/A'
     }))
     setSearchResults(results)
-    showToast('Showing all customers', 'info')
   }
 
   useEffect(() => {
@@ -150,30 +119,24 @@ export default function AddLoanPage() {
 
   const handleNextFromStep2 = () => {
     if (!selectedCustomer) { 
-      showToast('Please select a customer', 'error')
       return 
     }
     if (!loanData.amount || !loanData.interestRate || !loanData.tenure) {
-      showToast('Amount, interest rate, and tenure are required', 'error')
       return
     }
     // Validate amount is positive
     if (parseFloat(loanData.amount) <= 0) {
-      showToast('Loan amount must be greater than 0', 'error')
       return
     }
     // Validate interest rate
     if (parseFloat(loanData.interestRate) <= 0) {
-      showToast('Interest rate must be greater than 0', 'error')
       return
     }
     // Validate tenure
     if (parseInt(loanData.tenure) <= 0) {
-      showToast('Tenure must be greater than 0', 'error')
       return
     }
     
-    showToast('Loan details saved successfully', 'success')
     setCurrentStage(3)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -181,17 +144,38 @@ export default function AddLoanPage() {
   const fmt = (n: number) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
 
-  const handleShareEmail = (loanNo: string) => {
-    const subject = `Loan Application ${loanNo} - Confirmation`
-    const body = `Dear ${selectedCustomer?.name},\n\nYour loan application has been successfully submitted.\n\nLoan Details:\n- Loan Number: ${loanNo}\n- Amount: ${fmt(parseFloat(loanData.amount))}\n- Interest Rate: ${loanData.interestRate}%\n- Tenure: ${loanData.tenure} ${loanData.tenureType === 'MONTHLY' ? 'Months' : 'Years'}\n- EMI Amount: ${fmt(emiAmount)}\n\nThank you for choosing our services.\n\nBest Regards,\nNexzen Finance`
-    window.open(`mailto:${selectedCustomer?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
-    showToast('Email client opened', 'success')
+  const handleShareEmail = async (loanNo: string) => {
+    if (!selectedCustomer?.email) {
+      toast.warning('No Email', 'This customer does not have an email address on record.')
+      return
+    }
+    try {
+      const res = await fetch(`${API_BASE}/notifications/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          to: selectedCustomer.email,
+          name: selectedCustomer.name,
+          loanNumber: loanNo,
+          amount: parseFloat(loanData.amount),
+          interestRate: loanData.interestRate,
+          tenure: `${loanData.tenure} ${loanData.tenureType === 'MONTHLY' ? 'Months' : 'Years'}`,
+          emiAmount,
+        }),
+      })
+      if (res.ok) {
+        toast.success('Email Sent!', `Loan details sent to ${selectedCustomer.email}`)
+      } else {
+        toast.error('Email Failed', 'Could not send email. Please try again.')
+      }
+    } catch {
+      toast.error('Email Failed', 'Could not connect to server.')
+    }
   }
 
   const handleShareWhatsApp = (loanNo: string) => {
     const message = `*Loan Application Confirmation*\n\nDear ${selectedCustomer?.name},\n\nYour loan application has been successfully submitted.\n\n*Loan Details:*\n• Loan Number: ${loanNo}\n• Amount: ${fmt(parseFloat(loanData.amount))}\n• Interest Rate: ${loanData.interestRate}%\n• Tenure: ${loanData.tenure} ${loanData.tenureType === 'MONTHLY' ? 'Months' : 'Years'}\n• EMI Amount: ${fmt(emiAmount)}\n\nThank you for choosing our services.\n\n_Nexzen Finance_`
     window.open(`https://wa.me/${selectedCustomer?.phone}?text=${encodeURIComponent(message)}`)
-    showToast('WhatsApp opened', 'success')
   }
 
   return (
@@ -213,11 +197,7 @@ export default function AddLoanPage() {
                   <Button onClick={handleSearch} disabled={searching}>
                     <Search size={16} /> {searching ? 'Searching...' : 'Search'}
                   </Button>
-                  {FRONTEND_ONLY && (
-                    <Button variant="outline" onClick={showAllCustomers}>
-                      <User size={16} /> Show All
-                    </Button>
-                  )}
+
                 </div>
 
                 {searchResults.length > 0 && (
@@ -376,7 +356,6 @@ export default function AddLoanPage() {
 
                 <div className="flex justify-between mt-6">
                   <Button variant="outline" size="lg" onClick={() => {
-                    showToast('Draft saved successfully', 'success')
                   }}>
                     <Save size={16} /> Save Draft
                   </Button>
@@ -517,11 +496,9 @@ export default function AddLoanPage() {
                                 const file = e.target.files?.[0]
                                 if (file) {
                                   if (file.size > 5 * 1024 * 1024) {
-                                    showToast('File size must be less than 5MB', 'error')
                                     return
                                   }
                                   setUploadedDocs(prev => ({ ...prev, [doc]: file }))
-                                  showToast(`${file.name} captured successfully`, 'success')
                                 }
                               }}
                             />
@@ -539,11 +516,9 @@ export default function AddLoanPage() {
                                 const file = e.target.files?.[0]
                                 if (file) {
                                   if (file.size > 5 * 1024 * 1024) {
-                                    showToast('File size must be less than 5MB', 'error')
                                     return
                                   }
                                   setUploadedDocs(prev => ({ ...prev, [doc]: file }))
-                                  showToast(`${file.name} uploaded successfully`, 'success')
                                 }
                               }}
                             />
@@ -603,11 +578,9 @@ export default function AddLoanPage() {
                                 const file = e.target.files?.[0]
                                 if (file) {
                                   if (file.size > 5 * 1024 * 1024) {
-                                    showToast('File size must be less than 5MB', 'error')
                                     return
                                   }
                                   setUploadedDocs(prev => ({ ...prev, [doc]: file }))
-                                  showToast(`${file.name} captured successfully`, 'success')
                                 }
                               }}
                             />
@@ -625,11 +598,9 @@ export default function AddLoanPage() {
                                 const file = e.target.files?.[0]
                                 if (file) {
                                   if (file.size > 5 * 1024 * 1024) {
-                                    showToast('File size must be less than 5MB', 'error')
                                     return
                                   }
                                   setUploadedDocs(prev => ({ ...prev, [doc]: file }))
-                                  showToast(`${file.name} uploaded successfully`, 'success')
                                 }
                               }}
                             />
@@ -805,16 +776,13 @@ export default function AddLoanPage() {
               onClick={() => {
                 if (currentStage === 3) {
                   if (!stage3Data.guarantorName || !stage3Data.guarantorPhone) {
-                    showToast('Please fill guarantor name and phone', 'error'); return
                   }
                   if (!stage3Data.nomineeName || !stage3Data.nomineePhone) {
-                    showToast('Please fill nominee name and phone', 'error'); return
                   }
                   goNext()
                 } else if (currentStage === 4) {
                   goNext()
                 } else if (currentStage === 5) {
-                  if (!agreed) { showToast('Please agree to terms and conditions', 'error'); return }
                   const submitLoan = async () => {
                     const { addLoan } = await import('@/store/appStore').then(m => ({ addLoan: m.useStore.getState().addLoan }))
                     let tenureMonths = parseInt(loanData.tenure)
@@ -838,7 +806,6 @@ export default function AddLoanPage() {
                     const { addNotification } = await import('@/store/uiStore').then(m => ({ addNotification: m.useUIStore.getState().addNotification }))
                     addNotification('Loan Application Submitted', `Loan ${newLoan.loanNo} for ${selectedCustomer.name} created. Amount: ${fmt(parseFloat(loanData.amount))}`)
                     setSubmittedLoanNo(newLoan.loanNo)
-                    showToast(`Loan ${newLoan.loanNo} created successfully!`, 'success')
                     setShowShareModal(true)
                   }
                   submitLoan()

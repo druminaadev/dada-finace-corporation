@@ -5,14 +5,14 @@ import { useStore } from '@/store/appStore'
 
 interface Msg { role: 'bot' | 'user'; text: string }
 
-const WELCOME = `Hi! I'm NEXZEN Assistant 👋\nAsk me about loans, customers, employees, or how to use the system.`
+const WELCOME = `Hi! I'm Dada Finance Assistant 👋\nAsk me about loans, customers, employees, or how to use the system.`
 
 function buildReply(
   q: string,
   stats: { loans: number; customers: number; employees: number; pending: number; approved: number; disbursed: number }
 ): string {
   const t = q.toLowerCase()
-  if (/hello|hi|hey/.test(t)) return 'Hello! How can I help you with NEXZEN LMS today?'
+  if (/hello|hi|hey/.test(t)) return 'Hello! How can I help you with Dada Finance & Corporation today?'
   if (/help/.test(t)) return 'I can help with:\n• Loan status & counts\n• Customer & employee info\n• Navigation guidance\nJust ask!'
   if (/how many loan|total loan|loan count/.test(t))
     return `There are ${stats.loans} loans total:\n• Pending: ${stats.pending}\n• Approved: ${stats.approved}\n• Disbursed: ${stats.disbursed}`
@@ -62,7 +62,7 @@ export function Chatbot() {
         style={{ background: 'var(--accent)' }}
         onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-hover)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
-        title="Chat with NEXZEN Assistant">
+        title="Chat with Dada Finance Assistant">
         {open ? <X size={20} /> : <MessageCircle size={20} />}
       </button>
 
@@ -78,7 +78,7 @@ export function Chatbot() {
               <Bot size={16} />
             </div>
             <div className="flex-1">
-              <div className="text-sm font-semibold">NEXZEN Assistant</div>
+              <div className="text-sm font-semibold">Dada Finance Assistant</div>
               <div className="text-xs opacity-75 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'var(--success)' }} />
                 Online

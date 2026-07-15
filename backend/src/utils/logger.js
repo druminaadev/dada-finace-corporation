@@ -1,44 +1,31 @@
-const fs = require('fs');
-const path = require('path');
+import pino from 'pino';
 
-const logsDir = path.join(__dirname, '../../logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
-}
+const isDev = process.env.NODE_ENV !== 'production';
 
-class Logger {
-  static log(level, message, meta = {}) {
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      timestamp,
-      level,
-      message,
-      ...meta,
-    };
+export const logger = pino({
+  level: isDev ? 'debug' : 'info',
+  ...(isDev && {
+    transport: {
+      target: 'pino-pretty',
+      options: { colorize: true, translateTime: 'SYS:standard', ignore: 'pid,hostname' },
+    },
+  }),
+  redact: {
+    paths: ['password', 'token', 'refreshToken', 'accessToken', 'secret', 'apiKey', 'aadhaar', 'pan', 'bankAccountNo'],
+    censor: '[REDACTED]',
+  },
+});
 
-    const logFile = path.join(logsDir, `${level}.log`);
-    fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[${timestamp}] ${level.toUpperCase()}: ${message}`, meta);
-    }
+/**
+ * Log auth events for audit trail.
+ * @param {string} event
+ * @param {object} meta
+ */
+export const logAuthEvent = (event, meta = {}) => {
+  const safe = { ...meta };
+  if (safe.email) {
+    const [local, domain] = safe.email.split('@');
+    safe.email = `${local.slice(0, 2)}***@${domain}`;
   }
-
-  static info(message, meta) {
-    this.log('info', message, meta);
-  }
-
-  static error(message, meta) {
-    this.log('error', message, meta);
-  }
-
-  static warn(message, meta) {
-    this.log('warn', message, meta);
-  }
-
-  static debug(message, meta) {
-    this.log('debug', message, meta);
-  }
-}
-
-module.exports = Logger;
+  logger.info({ event, ...safe }, `AUTH:${event}`);
+};

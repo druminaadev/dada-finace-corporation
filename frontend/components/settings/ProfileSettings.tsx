@@ -1,20 +1,18 @@
 'use client'
 import { useState } from 'react'
 import { Camera, Save } from 'lucide-react'
-import { useUIStore } from '@/store/uiStore'
 
 export default function ProfileSettings() {
-  const { showToast } = useUIStore()
+  
   const [formData, setFormData] = useState({
     name: 'Admin User',
-    email: 'admin@nexzen.com',
+    email: 'admin@dadafinance.com',
     phone: '+91 98765 43210',
     role: 'Administrator',
     department: 'Management',
   })
 
   const handleSave = () => {
-    showToast('Profile updated successfully', 'success')
   }
 
   return (
